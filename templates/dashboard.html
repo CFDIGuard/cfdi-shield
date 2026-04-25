@@ -185,6 +185,32 @@
             gap: 8px;
         }
 
+        .dashboard-section-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .dashboard-section-nav a {
+            display: inline-flex;
+            align-items: center;
+            min-height: 32px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .dashboard-section-nav a:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
         .highlight {
             display: inline-flex;
             align-items: center;
@@ -399,6 +425,16 @@
             overflow-x: auto;
         }
 
+        .dashboard-scroll-section {
+            max-height: 420px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .dashboard-scroll-section table {
+            width: 100%;
+        }
+
         table {
             width: 100%;
             min-width: 920px;
@@ -419,6 +455,9 @@
             font-size: 12px;
             font-weight: 900;
             text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
 
         .table-name strong {
@@ -543,6 +582,11 @@
                     <span class="highlight">{{ reports.proveedores | length }} proveedores analizados</span>
                     <span class="highlight">{{ reports.riesgos | length }} filas en reporte de riesgos</span>
                 </div>
+                <nav class="dashboard-section-nav" aria-label="Navegacion rapida del dashboard">
+                    <a href="#ultimos-cfdi">Ultimos CFDI</a>
+                    <a href="#proveedores-principales">Proveedores principales</a>
+                    <a href="#resumen-periodo">Resumen del periodo</a>
+                </nav>
             </div>
             <div class="toolbar">
                 <a class="logout-button" href="/api/v1/dashboard/export-excel">Exportar Excel</a>
@@ -645,7 +689,7 @@
                     </div>
                 </div>
 
-                <section class="panel">
+                <section class="panel" id="ultimos-cfdi">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Ultimos CFDI</div>
@@ -655,7 +699,7 @@
                     </div>
 
                     {% if invoices %}
-                        <div class="table-wrap">
+                        <div class="table-wrap dashboard-scroll-section">
                             <table>
                                 <thead>
                                     <tr>
@@ -705,7 +749,7 @@
                     {% endif %}
                 </section>
 
-                <section class="panel">
+                <section class="panel" id="proveedores-principales">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Proveedores principales</div>
@@ -715,7 +759,7 @@
                     </div>
 
                     {% if reports.proveedores %}
-                        <div class="table-wrap">
+                        <div class="table-wrap dashboard-scroll-section">
                             <table>
                                 <thead>
                                     <tr>
@@ -815,7 +859,7 @@
                     </div>
                 </section>
 
-                <section class="panel">
+                <section class="panel" id="riesgos-detectados">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Riesgos destacados</div>
@@ -824,7 +868,7 @@
                     </div>
                     <div class="panel-body">
                         {% if summary.riesgos %}
-                            <div class="risk-list">
+                            <div class="risk-list dashboard-scroll-section">
                                 {% for riesgo in summary.riesgos %}
                                     <article class="risk-item">
                                         <div class="risk-head">
@@ -849,7 +893,7 @@
                     </div>
                 </section>
 
-                <section class="panel">
+                <section class="panel" id="resumen-periodo">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Resumen por periodo</div>
@@ -857,7 +901,7 @@
                         </div>
                     </div>
                     {% if reports.resumen %}
-                        <div class="table-wrap">
+                        <div class="table-wrap dashboard-scroll-section">
                             <table>
                                 <thead>
                                     <tr>
