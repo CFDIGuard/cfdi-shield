@@ -35,6 +35,23 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"])
 
 
+def _enable_registration() -> bool:
+    return bool(getattr(settings, "enable_registration", True))
+
+
+def _enable_beta_mode() -> bool:
+    return bool(getattr(settings, "enable_beta_mode", False))
+
+
+def _beta_access_code() -> str:
+    return str(getattr(settings, "beta_access_code", "") or "")
+
+
+def _beta_allowed_emails() -> set[str]:
+    value = getattr(settings, "beta_allowed_emails", set())
+    return value if isinstance(value, set) else set()
+
+
 def _set_session_cookie(response: RedirectResponse, user_id: int) -> None:
     response.set_cookie(
         key=settings.session_cookie_name,
@@ -61,16 +78,17 @@ def _clear_auth_cookies(response: RedirectResponse) -> None:
 
 
 def _registration_error_for(username: str, access_code: str | None) -> str | None:
-    if not settings.enable_registration:
+    if not _enable_registration():
         return "El registro publico esta desactivado en este entorno."
-    if not settings.enable_beta_mode:
+    if not _enable_beta_mode():
         return None
 
     normalized_username = username.strip().lower()
     normalized_access_code = (access_code or "").strip()
-    if normalized_access_code and settings.beta_access_code and normalized_access_code == settings.beta_access_code:
+    configured_code = _beta_access_code()
+    if normalized_access_code and configured_code and normalized_access_code == configured_code:
         return None
-    if normalized_username in settings.beta_allowed_emails:
+    if normalized_username in _beta_allowed_emails():
         return None
     return "El registro beta requiere un codigo de acceso valido o un correo autorizado."
 
@@ -94,7 +112,7 @@ def login_page(
         {
             "message": message,
             "error": error,
-            "enable_registration": settings.enable_registration,
+            "enable_registration": _enable_registration(),
         },
     )
 
@@ -346,7 +364,7 @@ def register_page(
 ):
     if current_user is not None:
         return RedirectResponse(url="/dashboard-web", status_code=status.HTTP_303_SEE_OTHER)
-    if not settings.enable_registration:
+    if not _enable_registration():
         return RedirectResponse(
             url=web_url("/login", error="El registro publico esta desactivado en este entorno."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -358,8 +376,8 @@ def register_page(
         {
             "message": message,
             "error": error,
-            "enable_beta_mode": settings.enable_beta_mode,
-            "beta_access_code_required": bool(settings.beta_access_code),
+            "enable_beta_mode": _enable_beta_mode(),
+            "beta_access_code_required": bool(_beta_access_code()),
         },
     )
 
