@@ -43,6 +43,7 @@ def procesar_factura(
     repository: InvoiceRepository,
     filename: str | None = None,
     use_sat_validation: bool | None = None,
+    user_id: int | None = None,
 ) -> InvoiceCreate:
     data = None
     try:
@@ -139,6 +140,7 @@ def procesar_factura(
                 "total_mxn": exchange_rate_result.total_mxn,
                 "fuente_tipo_cambio": exchange_rate_result.fuente_tipo_cambio,
                 "fecha_tipo_cambio": exchange_rate_result.fecha_tipo_cambio,
+                "user_id": user_id,
                 "sat_validado_at": (
                     datetime.utcfromtimestamp(sat_result.validated_at_epoch)
                     if sat_result.validated_at_epoch is not None

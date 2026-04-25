@@ -12,21 +12,31 @@ from app.services.reports_service import build_dashboard_summary, build_reports_
 
 
 class InvoiceRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, user_id: int | None = None):
         self.db = db
+        self.user_id = user_id
+
+    def _scope_invoice_statement(self, statement):
+        if self.user_id is None:
+            return statement
+        return statement.where(Invoice.user_id == self.user_id)
 
     def create(self, invoice_data: InvoiceCreate) -> Invoice:
-        invoice = Invoice(**invoice_data.model_dump())
+        payload = invoice_data.model_dump()
+        if self.user_id is not None:
+            payload["user_id"] = self.user_id
+        invoice = Invoice(**payload)
         self.db.add(invoice)
         self.db.commit()
         self.db.refresh(invoice)
         return invoice
 
     def get_by_id(self, invoice_id: int) -> Invoice | None:
-        return self.db.get(Invoice, invoice_id)
+        statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.id == invoice_id)
+        return self.db.execute(statement).scalar_one_or_none()
 
     def get_by_uuid(self, uuid: str) -> Invoice | None:
-        statement = select(Invoice).where(Invoice.uuid == uuid)
+        statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.uuid == uuid)
         return self.db.execute(statement).scalar_one_or_none()
 
     def get_recent_sat_validation(self, uuid: str, max_age_seconds: int) -> SatValidationCache | None:
@@ -55,15 +65,17 @@ class InvoiceRepository:
         return cache_entry
 
     def list(self, skip: int = 0, limit: int = 100) -> list[Invoice]:
-        statement = select(Invoice).order_by(Invoice.created_at.desc()).offset(skip).limit(limit)
+        statement = self._scope_invoice_statement(
+            select(Invoice).order_by(Invoice.created_at.desc())
+        ).offset(skip).limit(limit)
         return list(self.db.execute(statement).scalars().all())
 
     def list_all(self) -> list[Invoice]:
-        statement = select(Invoice).order_by(Invoice.created_at.desc())
+        statement = self._scope_invoice_statement(select(Invoice).order_by(Invoice.created_at.desc()))
         return list(self.db.execute(statement).scalars().all())
 
     def exists_same_rfc_total(self, rfc_emisor: str, total: float) -> bool:
-        statement = select(func.count(Invoice.id)).where(
+        statement = self._scope_invoice_statement(select(func.count(Invoice.id))).where(
             Invoice.rfc_emisor == rfc_emisor,
             func.round(cast(Invoice.total, Numeric), 2) == round(total, 2),
         )
@@ -73,10 +85,12 @@ class InvoiceRepository:
         if not rfc_emisor:
             return {"facturas": 0, "canceladas": 0}
         facturas = self.db.execute(
-            select(func.count(Invoice.id)).where(Invoice.rfc_emisor == rfc_emisor)
+            self._scope_invoice_statement(select(func.count(Invoice.id))).where(
+                Invoice.rfc_emisor == rfc_emisor
+            )
         ).scalar_one()
         canceladas = self.db.execute(
-            select(func.count(Invoice.id)).where(
+            self._scope_invoice_statement(select(func.count(Invoice.id))).where(
                 Invoice.rfc_emisor == rfc_emisor,
                 func.upper(Invoice.estatus_sat) == "CANCELADO",
             )
@@ -84,7 +98,9 @@ class InvoiceRepository:
         return {"facturas": int(facturas), "canceladas": int(canceladas)}
 
     def get_high_amount_threshold(self) -> float:
-        threshold = self.db.execute(select(func.coalesce(func.avg(Invoice.total), 0))).scalar_one()
+        threshold = self.db.execute(
+            self._scope_invoice_statement(select(func.coalesce(func.avg(Invoice.total), 0)))
+        ).scalar_one()
         return max(float(threshold or 0) * 2, 100000.0)
 
     def update_status_and_risk(
@@ -116,5 +132,7 @@ class InvoiceRepository:
         return build_reports_bundle(self.list_all())
 
     def unique_suppliers_count(self) -> int:
-        statement = select(func.count(distinct(Invoice.rfc_emisor))).where(Invoice.rfc_emisor.is_not(None))
+        statement = self._scope_invoice_statement(
+            select(func.count(distinct(Invoice.rfc_emisor))).where(Invoice.rfc_emisor.is_not(None))
+        )
         return int(self.db.execute(statement).scalar_one())

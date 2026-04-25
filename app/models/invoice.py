@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -8,9 +8,13 @@ from app.db.base import Base
 
 class Invoice(Base):
     __tablename__ = "invoices"
+    __table_args__ = (
+        Index("ix_invoices_user_uuid_unique", "user_id", "uuid", unique=True),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    uuid: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    uuid: Mapped[str] = mapped_column(String, index=True, nullable=False)
     archivo: Mapped[str | None] = mapped_column(String, default=None)
     razon_social: Mapped[str | None] = mapped_column(String, default=None)
     rfc_emisor: Mapped[str | None] = mapped_column(String, index=True)

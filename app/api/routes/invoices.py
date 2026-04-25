@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_api_current_user, get_db
 from app.repositories.invoice_repository import InvoiceRepository
+from app.models.user import User
 from app.schemas.invoice import InvoiceResponse, InvoiceUploadResponse
 from app.services.invoice_processor import procesar_factura
 from app.services.risk_engine import build_risk_detail, calculate_risk_level, detect_invoice_risk_types
@@ -21,7 +22,11 @@ router = APIRouter(prefix="/invoices", tags=["invoices"])
     response_model=InvoiceUploadResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def upload_xml(file: UploadFile = File(...), db: Session = Depends(get_db)) -> dict[str, object]:
+def upload_xml(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> dict[str, object]:
     if not file.filename or not file.filename.lower().endswith(".xml"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -29,7 +34,7 @@ def upload_xml(file: UploadFile = File(...), db: Session = Depends(get_db)) -> d
         )
 
     content = file.file.read()
-    repository = InvoiceRepository(db)
+    repository = InvoiceRepository(db, user_id=current_user.id)
 
     try:
         parsed_invoice = parse_cfdi_xml(content, filename=file.filename)
@@ -44,7 +49,13 @@ def upload_xml(file: UploadFile = File(...), db: Session = Depends(get_db)) -> d
         )
 
     try:
-        invoice_data = procesar_factura(content, repository=repository, filename=file.filename)
+        invoice_data = procesar_factura(
+            content,
+            repository=repository,
+            filename=file.filename,
+            use_sat_validation=current_user.use_sat_validation,
+            user_id=current_user.id,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -61,30 +72,47 @@ def upload_xml(file: UploadFile = File(...), db: Session = Depends(get_db)) -> d
 
 
 @router.get("", response_model=list[InvoiceResponse])
-def list_invoices(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)) -> list[InvoiceResponse]:
+def list_invoices(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> list[InvoiceResponse]:
     limit = min(limit, 500)
-    return InvoiceRepository(db).list(skip=skip, limit=limit)
+    return InvoiceRepository(db, user_id=current_user.id).list(skip=skip, limit=limit)
 
 
 @router.get("/by-uuid/{uuid}", response_model=InvoiceResponse)
-def get_invoice_by_uuid(uuid: str, db: Session = Depends(get_db)) -> InvoiceResponse:
-    invoice = InvoiceRepository(db).get_by_uuid(uuid)
+def get_invoice_by_uuid(
+    uuid: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> InvoiceResponse:
+    invoice = InvoiceRepository(db, user_id=current_user.id).get_by_uuid(uuid)
     if invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")
     return invoice
 
 
 @router.get("/{invoice_id}", response_model=InvoiceResponse)
-def get_invoice(invoice_id: int, db: Session = Depends(get_db)) -> InvoiceResponse:
-    invoice = InvoiceRepository(db).get_by_id(invoice_id)
+def get_invoice(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> InvoiceResponse:
+    invoice = InvoiceRepository(db, user_id=current_user.id).get_by_id(invoice_id)
     if invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")
     return invoice
 
 
 @router.post("/{invoice_id}/refresh-sat-status", response_model=InvoiceResponse)
-def refresh_sat_status(invoice_id: int, db: Session = Depends(get_db)) -> InvoiceResponse:
-    repository = InvoiceRepository(db)
+def refresh_sat_status(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> InvoiceResponse:
+    repository = InvoiceRepository(db, user_id=current_user.id)
     invoice = repository.get_by_id(invoice_id)
     if invoice is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")

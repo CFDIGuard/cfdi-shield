@@ -75,13 +75,22 @@ def _ensure_user_columns() -> None:
 
 def _ensure_invoice_indexes() -> None:
     with engine.begin() as connection:
+        if _database_dialect() == "postgresql":
+            connection.execute(text("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_uuid_key"))
+        connection.execute(text("DROP INDEX IF EXISTS ix_invoices_uuid_unique"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_uuid ON invoices(uuid)"))
+        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_user_id ON invoices(user_id)"))
         connection.execute(
-            text("CREATE UNIQUE INDEX IF NOT EXISTS ix_invoices_uuid_unique ON invoices(uuid)")
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_invoices_user_uuid_unique "
+                "ON invoices(user_id, uuid)"
+            )
         )
 
 
 def _ensure_invoice_columns() -> None:
     statements = {
+        "user_id": _add_column_statement("invoices", "user_id", "INTEGER"),
         "archivo": _add_column_statement("invoices", "archivo", "VARCHAR"),
         "razon_social": _add_column_statement("invoices", "razon_social", "VARCHAR"),
         "folio": _add_column_statement("invoices", "folio", "VARCHAR"),
@@ -110,6 +119,36 @@ def _ensure_invoice_columns() -> None:
         _execute_add_column_if_missing("invoices", column_name, statement)
 
 
+def _first_user_id() -> int | None:
+    with engine.begin() as connection:
+        row = connection.execute(
+            text(
+                "SELECT id FROM users "
+                "ORDER BY CASE WHEN username = 'admin' THEN 0 ELSE 1 END, id ASC "
+                "LIMIT 1"
+            )
+        ).first()
+    if row is None:
+        return None
+    return int(row[0])
+
+
+def _backfill_invoice_user_id() -> None:
+    columns = _column_names("invoices")
+    if "user_id" not in columns:
+        return
+
+    owner_user_id = _first_user_id()
+    if owner_user_id is None:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("UPDATE invoices SET user_id = :user_id WHERE user_id IS NULL"),
+            {"user_id": owner_user_id},
+        )
+
+
 def ensure_db_initialized() -> None:
     global _initialized
     if _initialized:
@@ -122,6 +161,7 @@ def ensure_db_initialized() -> None:
         Base.metadata.create_all(bind=engine)
         _ensure_user_columns()
         _ensure_invoice_columns()
+        _backfill_invoice_user_id()
         _ensure_invoice_indexes()
         _initialized = True
         logger.info("Database schema ready")

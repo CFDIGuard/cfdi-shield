@@ -142,7 +142,7 @@ def upload_xml_web(
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
-    repository = InvoiceRepository(db)
+    repository = InvoiceRepository(db, user_id=current_user.id)
     nuevas = 0
     duplicadas = 0
     invalidas = 0
@@ -212,6 +212,7 @@ def upload_xml_web(
                 repository=repository,
                 filename=filename,
                 use_sat_validation=current_user.use_sat_validation,
+                user_id=current_user.id,
             )
             repository.create(invoice_data)
             nuevas += 1
@@ -271,7 +272,7 @@ def dashboard_web(
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    repository = InvoiceRepository(db)
+    repository = InvoiceRepository(db, user_id=current_user.id)
     reports_bundle = repository.reports()
     summary = reports_bundle["summary"]
     invoices = repository.list(limit=8)
@@ -330,7 +331,7 @@ def delete_invoice(
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    repository = InvoiceRepository(db)
+    repository = InvoiceRepository(db, user_id=current_user.id)
     invoice = repository.get_by_id(invoice_id)
     if invoice is None:
         return RedirectResponse(

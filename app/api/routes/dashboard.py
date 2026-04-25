@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_api_current_user, get_db
+from app.models.user import User
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.dashboard import (
     ControlRow,
@@ -22,38 +23,59 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
 @router.get("/summary", response_model=DashboardSummary)
-def get_summary(db: Session = Depends(get_db)) -> dict[str, float | int]:
-    return InvoiceRepository(db).summary()
+def get_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> dict[str, float | int]:
+    return InvoiceRepository(db, user_id=current_user.id).summary()
 
 
 @router.get("/reports", response_model=ReportsBundle)
-def get_reports(db: Session = Depends(get_db)) -> dict[str, object]:
-    return InvoiceRepository(db).reports()["reports"]
+def get_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> dict[str, object]:
+    return InvoiceRepository(db, user_id=current_user.id).reports()["reports"]
 
 
 @router.get("/reports/resumen", response_model=list[MonthlySummary])
-def get_resumen_report(db: Session = Depends(get_db)) -> list[dict[str, object]]:
-    return InvoiceRepository(db).reports()["reports"]["resumen"]
+def get_resumen_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports()["reports"]["resumen"]
 
 
 @router.get("/reports/control", response_model=list[ControlRow])
-def get_control_report(db: Session = Depends(get_db)) -> list[dict[str, object]]:
-    return InvoiceRepository(db).reports()["reports"]["control"]
+def get_control_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports()["reports"]["control"]
 
 
 @router.get("/reports/proveedores", response_model=list[ProviderSummary])
-def get_proveedores_report(db: Session = Depends(get_db)) -> list[dict[str, object]]:
-    return InvoiceRepository(db).reports()["reports"]["proveedores"]
+def get_proveedores_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports()["reports"]["proveedores"]
 
 
 @router.get("/reports/riesgos", response_model=list[RiskSummary])
-def get_riesgos_report(db: Session = Depends(get_db)) -> list[dict[str, object]]:
-    return InvoiceRepository(db).reports()["reports"]["riesgos"]
+def get_riesgos_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports()["reports"]["riesgos"]
 
 
 @router.get("/export-excel", response_model=None)
-def export_excel_report(db: Session = Depends(get_db)) -> StreamingResponse:
-    reports_bundle = InvoiceRepository(db).reports()
+def export_excel_report(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+) -> StreamingResponse:
+    reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports()
     workbook_bytes = generate_excel_report(reports_bundle)
     filename = f"facturas_v3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(

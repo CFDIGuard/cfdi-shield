@@ -34,7 +34,7 @@ class InvoiceBase(BaseModel):
 
 
 class InvoiceCreate(InvoiceBase):
-    pass
+    user_id: int
 
 
 class InvoiceResponse(InvoiceBase):
