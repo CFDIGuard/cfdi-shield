@@ -11,6 +11,7 @@ from app.models.user import User
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
 from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
+from app.services.notification_service import smtp_ready_for_delivery
 from app.templates import templates
 from app.services.xml_parser import parse_cfdi_xml
 from app.web.utils import web_url
@@ -59,6 +60,18 @@ def _sat_mode_view(current_user: User) -> tuple[bool, str]:
     if not current_user.use_sat_validation:
         return False, "Desactivado para este usuario. Las nuevas cargas usaran estado local sin consultar SAT."
     return True, "Activado para este usuario. Las nuevas cargas consultaran SAT cuando aplique."
+
+
+def _two_factor_view(current_user: User) -> tuple[bool, str, bool]:
+    if not settings.enable_two_factor:
+        return False, "2FA desactivado en esta demo.", False
+    if not smtp_ready_for_delivery():
+        if current_user.two_factor_enabled:
+            return True, "2FA requiere configuracion SMTP para volver a activarse por correo.", True
+        return False, "2FA requiere configuracion SMTP.", False
+    if current_user.two_factor_enabled:
+        return True, "Proteccion por correo activa para este usuario.", True
+    return False, "Disponible para activarse con envio por correo.", True
 
 
 @router.get("/", response_class=HTMLResponse, response_model=None)
@@ -251,6 +264,7 @@ def dashboard_web(
     summary = reports_bundle["summary"]
     invoices = repository.list(limit=8)
     sat_mode_effective, sat_mode_note = _sat_mode_view(current_user)
+    two_factor_effective, two_factor_note, can_toggle_two_factor = _two_factor_view(current_user)
 
     return templates.TemplateResponse(
         request,
@@ -266,6 +280,9 @@ def dashboard_web(
             "use_sat_validation": current_user.use_sat_validation,
             "sat_mode_effective": sat_mode_effective,
             "sat_mode_note": sat_mode_note,
+            "two_factor_effective": two_factor_effective,
+            "two_factor_note": two_factor_note,
+            "can_toggle_two_factor": can_toggle_two_factor,
         },
     )
 

@@ -34,7 +34,8 @@ Archivos sugeridos para el repo:
 1. entra a Render
 2. elige `New +`
 3. selecciona `Blueprint`
-4. conecta el repositorio privado
+4. conecta el repositorio privado:
+   - `https://github.com/CFDIGuard/cfdi-shield`
 5. confirma que Render detecte:
    - `render.yaml`
    - servicio web `cfdi-shield-demo`
@@ -45,6 +46,7 @@ Archivos sugeridos para el repo:
 Antes del deploy, define una clave beta privada en:
 
 - `BETA_ACCESS_CODE`
+- opcionalmente `BETA_ALLOWED_EMAILS`
 
 Esa clave se usara para controlar el registro de usuarios de prueba.
 
@@ -58,6 +60,7 @@ Esa clave se usara para controlar el registro de usuarios de prueba.
 1. abre la URL publica generada por Render
 2. entra a `/login`
 3. valida que la app cargue correctamente
+4. actualiza `BASE_URL` en Render con esa misma URL publica y vuelve a desplegar si usaras recuperacion de contrasena
 
 ## 8. Probar registro con codigo beta
 
@@ -104,6 +107,7 @@ LOCAL_MODE=False
 ENABLE_SAT_VALIDATION=True
 ENABLE_REGISTRATION=True
 ENABLE_BETA_MODE=True
+ENABLE_2FA=False
 BETA_ACCESS_CODE=tu-codigo-beta
 BETA_ALLOWED_EMAILS=correo1@dominio.com,correo2@dominio.com
 APP_SECRET_KEY=una-clave-larga-y-privada
@@ -121,6 +125,21 @@ SMTP_FROM_EMAIL=
 SMTP_USE_TLS=True
 SMTP_USE_SSL=False
 ```
+
+Para demo publica sin correo:
+
+```env
+ENABLE_2FA=False
+```
+
+Si quieres 2FA real por correo, configura:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_USE_TLS`
 
 ## 12. Como funciona el modo beta
 
@@ -157,6 +176,9 @@ ENABLE_REGISTRATION=False
 - no subas `facturas.db`
 - no subas XML reales
 - no subas logs
+- si 2FA aparece apagado o no permite activarse, revisa que:
+  - `ENABLE_2FA=True`
+  - SMTP este configurado completamente
 - si SAT real no debe consultarse durante demo, ajusta:
 
 ```env

@@ -25,6 +25,7 @@ from app.services.notification_service import (
     send_password_reset_email,
     send_two_factor_email,
     smtp_is_configured,
+    smtp_ready_for_delivery,
 )
 from app.templates import templates
 from app.web.utils import web_url
@@ -50,6 +51,14 @@ def _beta_access_code() -> str:
 def _beta_allowed_emails() -> set[str]:
     value = getattr(settings, "beta_allowed_emails", set())
     return value if isinstance(value, set) else set()
+
+
+def _two_factor_available() -> bool:
+    return bool(settings.enable_two_factor)
+
+
+def _two_factor_can_be_enabled() -> bool:
+    return _two_factor_available() and smtp_ready_for_delivery()
 
 
 def _set_session_cookie(response: RedirectResponse, user_id: int) -> None:
@@ -446,7 +455,7 @@ def toggle_two_factor(
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
-    if not settings.enable_two_factor:
+    if not _two_factor_available():
         return RedirectResponse(
             url=web_url("/dashboard-web", error="La verificacion en dos pasos esta desactivada en este entorno."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -456,6 +465,12 @@ def toggle_two_factor(
     user = repository.get_by_id(current_user.id)
     if user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    if not user.two_factor_enabled and not _two_factor_can_be_enabled():
+        return RedirectResponse(
+            url=web_url("/dashboard-web", error="2FA requiere configuracion SMTP."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
     repository.set_two_factor_enabled(user, not user.two_factor_enabled)
     status_message = "2FA activado correctamente." if user.two_factor_enabled else "2FA desactivado correctamente."

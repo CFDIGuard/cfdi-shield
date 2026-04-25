@@ -608,19 +608,21 @@
                 <div class="security-card">
                     <div class="security-copy">
                         <strong>Verificacion en dos pasos</strong>
-                        <span>Controla el acceso del usuario actual desde el mismo dashboard sin salir del flujo operativo.</span>
+                        <span>{{ two_factor_note }}</span>
                     </div>
                     <div class="security-actions">
-                        {% if current_user.two_factor_enabled %}
+                        {% if two_factor_effective %}
                             <span class="tag success">Activa</span>
                         {% else %}
                             <span class="tag warning">Inactiva</span>
                         {% endif %}
-                        <form action="/two-factor/toggle" method="post">
-                            <button class="toggle-button" type="submit">
-                                {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
-                            </button>
-                        </form>
+                        {% if can_toggle_two_factor %}
+                            <form action="/two-factor/toggle" method="post">
+                                <button class="toggle-button" type="submit">
+                                    {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
+                                </button>
+                            </form>
+                        {% endif %}
                     </div>
                 </div>
 
