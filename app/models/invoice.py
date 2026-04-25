@@ -1,0 +1,33 @@
+from datetime import datetime
+
+from sqlalchemy import DateTime, Float, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    uuid: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    archivo: Mapped[str | None] = mapped_column(String, default=None)
+    razon_social: Mapped[str | None] = mapped_column(String, default=None)
+    rfc_emisor: Mapped[str | None] = mapped_column(String, index=True)
+    rfc_receptor: Mapped[str | None] = mapped_column(String, index=True)
+    folio: Mapped[str | None] = mapped_column(String, default=None)
+    fecha_emision: Mapped[str | None] = mapped_column(String, index=True)
+    mes: Mapped[str | None] = mapped_column(String, index=True)
+    subtotal: Mapped[float] = mapped_column(Float, default=0)
+    total: Mapped[float] = mapped_column(Float, default=0)
+    iva: Mapped[float] = mapped_column(Float, default=0)
+    iva_retenido: Mapped[float] = mapped_column(Float, default=0)
+    isr_retenido: Mapped[float] = mapped_column(Float, default=0)
+    moneda: Mapped[str | None] = mapped_column(String, default=None)
+    metodo_pago: Mapped[str | None] = mapped_column(String, default=None)
+    estatus_sat: Mapped[str] = mapped_column(String, default="ERROR")
+    riesgo: Mapped[str] = mapped_column(String, default="BAJO")
+    score_proveedor: Mapped[float] = mapped_column(Float, default=0)
+    detalle_riesgo: Mapped[str | None] = mapped_column(Text, default=None)
+    sat_validado_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

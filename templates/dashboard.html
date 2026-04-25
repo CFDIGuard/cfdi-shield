@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFDI Shield | Dashboard</title>
+    <style>
+        :root {
+            --bg: #edf3f8;
+            --surface: rgba(255, 255, 255, 0.95);
+            --surface-strong: #ffffff;
+            --surface-soft: #f8fbff;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --line: #dbe4ee;
+            --line-strong: #c6d4e1;
+            --primary: #2563eb;
+            --primary-soft: #e8f0ff;
+            --accent: #0f766e;
+            --accent-soft: #e8faf7;
+            --danger: #dc2626;
+            --danger-soft: #fff1f2;
+            --warning: #b45309;
+            --warning-soft: #fff7ed;
+            --success: #15803d;
+            --success-soft: #ecfdf3;
+            --shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 24rem),
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.11), transparent 22rem),
+                var(--bg);
+        }
+
+        .shell {
+            width: min(1360px, calc(100% - 24px));
+            margin: 0 auto;
+            padding: 18px 0 28px;
+        }
+
+        .topbar,
+        .hero,
+        .kpi,
+        .panel,
+        .security-card {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .nav,
+        .account,
+        .toolbar,
+        .security-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav a,
+        .button-link,
+        .logout-button,
+        .toggle-button,
+        .delete-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font: inherit;
+            font-weight: 800;
+            text-decoration: none;
+            transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+        }
+
+        .nav a {
+            color: var(--ink);
+        }
+
+        .nav a.active,
+        .nav a:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .button-link,
+        .toggle-button {
+            border: 0;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            cursor: pointer;
+        }
+
+        .logout-button {
+            border: 1px solid var(--line);
+            background: var(--surface-strong);
+            color: var(--ink);
+            cursor: pointer;
+        }
+
+        .delete-button {
+            min-width: 96px;
+            border: 0;
+            color: #fff;
+            background: linear-gradient(135deg, #ef4444, var(--danger));
+            cursor: pointer;
+        }
+
+        .user-pill {
+            display: inline-flex;
+            align-items: center;
+            min-height: 36px;
+            padding: 7px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .hero {
+            margin-top: 14px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(26px, 3vw, 34px);
+            line-height: 1.05;
+        }
+
+        .subtitle {
+            margin: 0;
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .hero-highlights {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .highlight {
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            padding: 6px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .alert.success { background: var(--success-soft); color: var(--success); }
+        .alert.error { background: var(--danger-soft); color: var(--danger); }
+
+        .kpis {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .kpi {
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .kpi::after {
+            content: "";
+            position: absolute;
+            inset: auto -20px -20px auto;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.10), rgba(15, 118, 110, 0.06));
+        }
+
+        .kpi-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .kpi-value {
+            position: relative;
+            z-index: 1;
+            margin-top: 8px;
+            font-size: 24px;
+            font-weight: 900;
+            line-height: 1.1;
+        }
+
+        .kpi-meta {
+            position: relative;
+            z-index: 1;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .layout {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: 1.45fr 1fr;
+            gap: 12px;
+        }
+
+        .stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .security-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 14px 16px;
+        }
+
+        .security-copy strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 16px;
+        }
+
+        .security-copy span {
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            min-height: 26px;
+            padding: 5px 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .tag.success { background: var(--success-soft); color: var(--success); }
+        .tag.warning { background: var(--warning-soft); color: var(--warning); }
+        .tag.high { background: var(--danger-soft); color: var(--danger); }
+        .tag.info { background: var(--primary-soft); color: var(--primary); }
+
+        .panel {
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .panel-copy {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .panel-body {
+            padding: 14px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .mini-metric {
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+        }
+
+        .mini-metric strong {
+            display: block;
+            margin-top: 6px;
+            font-size: 20px;
+            line-height: 1.1;
+        }
+
+        .mini-metric span {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .risk-bars {
+            display: grid;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .risk-row {
+            display: grid;
+            grid-template-columns: 76px 1fr 56px;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .risk-row-label,
+        .risk-row-value {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--muted);
+        }
+
+        .risk-track {
+            height: 12px;
+            border-radius: 999px;
+            background: #e7eef6;
+            overflow: hidden;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 920px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--muted);
+            background: #fbfdff;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .table-name strong {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 13px;
+        }
+
+        .table-name span,
+        .muted {
+            color: var(--muted);
+        }
+
+        .uuid {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+            font-size: 12px;
+        }
+
+        .empty {
+            padding: 16px 14px;
+            color: var(--muted);
+        }
+
+        .risk-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .risk-item {
+            display: grid;
+            gap: 8px;
+            padding: 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+        }
+
+        .risk-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .risk-title {
+            font-weight: 900;
+        }
+
+        .risk-copy {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 1200px) {
+            .kpis {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 820px) {
+            .topbar,
+            .hero,
+            .nav,
+            .account,
+            .toolbar,
+            .security-card,
+            .security-actions,
+            .panel-header,
+            .risk-head {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .kpis,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .risk-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">FG</div>
+                <span>CFDI Shield</span>
+            </div>
+            <nav class="nav" aria-label="Navegacion principal">
+                <a href="/">Cargar</a>
+                <a class="active" href="/dashboard-web">Dashboard</a>
+            </nav>
+            <div class="account">
+                <span class="user-pill">{{ current_user.username }}</span>
+                <form action="/logout" method="post">
+                    <button class="logout-button" type="submit">Salir</button>
+                </form>
+            </div>
+        </header>
+
+        <section class="hero">
+            <div>
+                <h1>Dashboard operativo de CFDI Shield</h1>
+                <p class="subtitle">
+                    Sigue el estado de tus CFDI en una sola vista: volumen, validacion SAT,
+                    riesgos y proveedores principales con acceso directo a carga, exportacion y limpieza de registros.
+                </p>
+                <div class="hero-highlights">
+                    <span class="highlight">{{ reports.control | length }} registros en control</span>
+                    <span class="highlight">{{ reports.proveedores | length }} proveedores analizados</span>
+                    <span class="highlight">{{ reports.riesgos | length }} filas en reporte de riesgos</span>
+                </div>
+            </div>
+            <div class="toolbar">
+                <a class="logout-button" href="/api/v1/dashboard/export-excel">Exportar Excel</a>
+                <a class="button-link" href="/">Cargar XML</a>
+            </div>
+        </section>
+
+        {% if message %}
+            <div class="alert success">Operacion completada. {{ message }}</div>
+        {% endif %}
+        {% if error %}
+            <div class="alert error">Atencion. {{ error }}</div>
+        {% endif %}
+
+        <section class="kpis" aria-label="Indicadores principales">
+            <article class="kpi">
+                <div class="kpi-label">Total facturado</div>
+                <div class="kpi-value">${{ "{:,.2f}".format(summary.total_facturado) }}</div>
+                <div class="kpi-meta">Monto consolidado en CFDI Shield.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Facturas</div>
+                <div class="kpi-value">{{ summary.facturas }}</div>
+                <div class="kpi-meta">CFDI procesados dentro del tablero.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Vigentes</div>
+                <div class="kpi-value">{{ summary.vigentes }}</div>
+                <div class="kpi-meta">CFDI con estatus SAT vigente.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Canceladas</div>
+                <div class="kpi-value">{{ summary.canceladas }}</div>
+                <div class="kpi-meta">Registros marcados como cancelados.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Sin validacion SAT</div>
+                <div class="kpi-value">{{ summary.sin_validacion_sat }}</div>
+                <div class="kpi-meta">CFDI cargados sin consulta SAT activa.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Proveedores unicos</div>
+                <div class="kpi-value">{{ summary.proveedores_unicos }}</div>
+                <div class="kpi-meta">RFC emisores distintos registrados.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Riesgos altos</div>
+                <div class="kpi-value">{{ summary.riesgos_altos }}</div>
+                <div class="kpi-meta">Casos que merecen revision puntual.</div>
+            </article>
+        </section>
+
+        <section class="layout">
+            <section class="stack">
+                <div class="security-card">
+                    <div class="security-copy">
+                        <strong>Verificacion en dos pasos</strong>
+                        <span>Controla el acceso del usuario actual desde el mismo dashboard sin salir del flujo operativo.</span>
+                    </div>
+                    <div class="security-actions">
+                        {% if current_user.two_factor_enabled %}
+                            <span class="tag success">Activa</span>
+                        {% else %}
+                            <span class="tag warning">Inactiva</span>
+                        {% endif %}
+                        <form action="/two-factor/toggle" method="post">
+                            <button class="toggle-button" type="submit">
+                                {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="security-card">
+                    <div class="security-copy">
+                        <strong>Modo SAT: {% if sat_mode_effective %}Activado{% else %}Desactivado{% endif %}</strong>
+                        <span>{{ sat_mode_note }}</span>
+                    </div>
+                    <div class="security-actions">
+                        {% if sat_mode_effective %}
+                            <span class="tag success">Activado</span>
+                        {% else %}
+                            <span class="tag warning">Desactivado</span>
+                        {% endif %}
+                        <form action="/sat-validation/toggle" method="post">
+                            <button class="toggle-button" type="submit">
+                                {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Ultimos CFDI</div>
+                            <div class="panel-copy">Revision rapida de monto, estatus, riesgo y accion de eliminacion.</div>
+                        </div>
+                        <span class="tag info">{{ invoices | length }} visibles</span>
+                    </div>
+
+                    {% if invoices %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>UUID</th>
+                                        <th>Proveedor</th>
+                                        <th>Fecha</th>
+                                        <th>Total</th>
+                                        <th>IVA</th>
+                                        <th>SAT</th>
+                                        <th>Riesgo</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for invoice in invoices %}
+                                        <tr>
+                                            <td class="uuid" title="{{ invoice.uuid }}">{{ invoice.uuid }}</td>
+                                            <td class="table-name">
+                                                <strong>{{ invoice.razon_social or "-" }}</strong>
+                                                <span>{{ invoice.rfc_emisor or "-" }}</span>
+                                            </td>
+                                            <td>{{ invoice.fecha_emision or "-" }}</td>
+                                            <td>${{ "{:,.2f}".format(invoice.total) }}</td>
+                                            <td>${{ "{:,.2f}".format(invoice.iva) }}</td>
+                                            <td>{{ invoice.estatus_sat }}</td>
+                                            <td>
+                                                {% if invoice.riesgo == "ALTO" %}
+                                                    <span class="tag high">ALTO</span>
+                                                {% elif invoice.riesgo == "MEDIO" %}
+                                                    <span class="tag warning">MEDIO</span>
+                                                {% else %}
+                                                    <span class="tag success">BAJO</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                                    <button class="delete-button" type="submit">Eliminar</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="empty">No hay facturas aun.</div>
+                    {% endif %}
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Proveedores principales</div>
+                            <div class="panel-copy">Resumen por RFC con volumen, cancelaciones, IVA y nivel de riesgo.</div>
+                        </div>
+                        <span class="tag info">{{ reports.proveedores | length }} proveedores</span>
+                    </div>
+
+                    {% if reports.proveedores %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>RFC</th>
+                                        <th>Proveedor</th>
+                                        <th>Facturas</th>
+                                        <th>Total</th>
+                                        <th>Canceladas</th>
+                                        <th>% Canceladas</th>
+                                        <th>IVA</th>
+                                        <th>Score</th>
+                                        <th>Nivel</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for proveedor in reports.proveedores[:8] %}
+                                        <tr>
+                                            <td>{{ proveedor.rfc_emisor }}</td>
+                                            <td class="table-name">
+                                                <strong>{{ proveedor.razon_social }}</strong>
+                                                <span>Proveedor analizado</span>
+                                            </td>
+                                            <td>{{ proveedor.facturas }}</td>
+                                            <td>${{ "{:,.2f}".format(proveedor.total_facturado) }}</td>
+                                            <td>{{ proveedor.canceladas }}</td>
+                                            <td>{{ "{:,.2f}".format(proveedor.porcentaje_canceladas) }}%</td>
+                                            <td>${{ "{:,.2f}".format(proveedor.iva_total) }}</td>
+                                            <td>{{ proveedor.score_riesgo }}</td>
+                                            <td>
+                                                {% if proveedor.nivel_riesgo == "ALTO" %}
+                                                    <span class="tag high">ALTO</span>
+                                                {% elif proveedor.nivel_riesgo == "MEDIO" %}
+                                                    <span class="tag warning">MEDIO</span>
+                                                {% else %}
+                                                    <span class="tag success">BAJO</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="empty">Todavia no hay proveedores para mostrar.</div>
+                    {% endif %}
+                </section>
+            </section>
+
+            <section class="stack">
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Panorama general</div>
+                            <div class="panel-copy">Lectura corta de operacion, impuestos y riesgo.</div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="summary-grid">
+                            <article class="mini-metric">
+                                <span>Total IVA</span>
+                                <strong>${{ "{:,.2f}".format(summary.total_iva) }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Periodos</span>
+                                <strong>{{ reports.resumen | length }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Control</span>
+                                <strong>{{ reports.control | length }}</strong>
+                            </article>
+                        </div>
+
+                        {% set total_riesgos = summary.riesgo_alto + summary.riesgo_medio + summary.riesgo_bajo %}
+                        <div class="risk-bars">
+                            <div class="risk-row">
+                                <div class="risk-row-label">Alto</div>
+                                <div class="risk-track">
+                                    <div class="risk-fill" style="width: {{ ((summary.riesgo_alto / total_riesgos) * 100) if total_riesgos else 0 }}%;"></div>
+                                </div>
+                                <div class="risk-row-value">{{ summary.riesgo_alto }}</div>
+                            </div>
+                            <div class="risk-row">
+                                <div class="risk-row-label">Medio</div>
+                                <div class="risk-track">
+                                    <div class="risk-fill" style="width: {{ ((summary.riesgo_medio / total_riesgos) * 100) if total_riesgos else 0 }}%;"></div>
+                                </div>
+                                <div class="risk-row-value">{{ summary.riesgo_medio }}</div>
+                            </div>
+                            <div class="risk-row">
+                                <div class="risk-row-label">Bajo</div>
+                                <div class="risk-track">
+                                    <div class="risk-fill" style="width: {{ ((summary.riesgo_bajo / total_riesgos) * 100) if total_riesgos else 0 }}%;"></div>
+                                </div>
+                                <div class="risk-row-value">{{ summary.riesgo_bajo }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Riesgos destacados</div>
+                            <div class="panel-copy">CFDI con alertas altas o detalles que merecen seguimiento.</div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        {% if summary.riesgos %}
+                            <div class="risk-list">
+                                {% for riesgo in summary.riesgos %}
+                                    <article class="risk-item">
+                                        <div class="risk-head">
+                                            <div>
+                                                <div class="risk-title">{{ riesgo.razon_social }}</div>
+                                                <div class="risk-copy">{{ riesgo.rfc_emisor }}</div>
+                                            </div>
+                                            <span class="tag high">{{ riesgo.riesgo }}</span>
+                                        </div>
+                                        <div class="risk-copy">
+                                            UUID {{ riesgo.uuid }} | ${{ "{:,.2f}".format(riesgo.total) }} | {{ riesgo.estatus_sat }}
+                                        </div>
+                                        {% if riesgo.detalle_riesgo %}
+                                            <div class="risk-copy">{{ riesgo.detalle_riesgo }}</div>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="empty">No hay alertas altas registradas.</div>
+                        {% endif %}
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Resumen por periodo</div>
+                            <div class="panel-copy">Vista compacta del reporte RESUMEN integrado en la app.</div>
+                        </div>
+                    </div>
+                    {% if reports.resumen %}
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Facturas</th>
+                                        <th>Total</th>
+                                        <th>Vigentes</th>
+                                        <th>Canceladas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for periodo in reports.resumen[:6] %}
+                                        <tr>
+                                            <td>{{ periodo.mes }}</td>
+                                            <td>{{ periodo.facturas }}</td>
+                                            <td>${{ "{:,.2f}".format(periodo.total) }}</td>
+                                            <td>{{ periodo.vigentes }}</td>
+                                            <td>{{ periodo.canceladas }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="empty">Todavia no hay periodos acumulados.</div>
+                    {% endif %}
+                </section>
+            </section>
+        </section>
+    </main>
+</body>
+</html>

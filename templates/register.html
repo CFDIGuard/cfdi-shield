@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFDI Shield | Registro</title>
+    <style>
+        :root {
+            --bg: #eef3f8;
+            --surface: #ffffff;
+            --ink: #111827;
+            --muted: #667085;
+            --line: #d8e0ea;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #0f766e;
+            --error-bg: #fef2f2;
+            --error: #b42318;
+            --shadow: 0 18px 40px rgba(17, 24, 39, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28rem),
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.10), transparent 26rem),
+                var(--bg);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .shell {
+            width: min(520px, calc(100% - 32px));
+            min-height: 100vh;
+            display: grid;
+            align-items: center;
+            margin: 0 auto;
+            padding: 36px 0;
+        }
+
+        .card {
+            padding: 28px;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(216, 224, 234, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 22px;
+            font-weight: 900;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.15; }
+        .copy { margin: 0 0 20px; color: var(--muted); line-height: 1.6; }
+
+        .alert {
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            background: var(--error-bg);
+            color: var(--error);
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .field { display: grid; gap: 8px; margin-bottom: 16px; }
+        label { font-size: 14px; font-weight: 800; }
+
+        input {
+            width: 100%;
+            min-height: 46px;
+            padding: 11px 13px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .button {
+            width: 100%;
+            min-height: 48px;
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .button:hover { background: linear-gradient(135deg, var(--primary-dark), #0f5f59); }
+
+        .links {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .links a {
+            color: var(--primary-dark);
+            text-decoration: none;
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="card" aria-labelledby="register-title">
+            <div class="brand">
+                <div class="brand-mark">CFDI</div>
+                <span>CFDI Shield</span>
+            </div>
+            <h1 id="register-title">Crear cuenta</h1>
+            <p class="copy">Registra un usuario para acceder al sistema y administrar tus CFDI.</p>
+
+            {% if error %}
+                <div class="alert">{{ error }}</div>
+            {% endif %}
+
+            <form action="/register" method="post">
+                <div class="field">
+                    <label for="username">Usuario</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required minlength="3">
+                </div>
+                <div class="field">
+                    <label for="password">Contrasena</label>
+                    <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8">
+                </div>
+                <div class="field">
+                    <label for="password_confirm">Confirmar contrasena</label>
+                    <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="8">
+                </div>
+                {% if enable_beta_mode %}
+                    <div class="field">
+                        <label for="access_code">Codigo beta</label>
+                        <input
+                            id="access_code"
+                            name="access_code"
+                            type="text"
+                            autocomplete="off"
+                            {% if beta_access_code_required %}required{% endif %}
+                        >
+                    </div>
+                {% endif %}
+                <button class="button" type="submit">Crear cuenta</button>
+            </form>
+
+            <div class="links">
+                <a href="/login">Ya tienes cuenta? Iniciar sesion</a>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

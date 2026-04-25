@@ -1,0 +1,14 @@
+.env
+*.db
+logs/
+run/
+backups/
+backup/
+release/
+run-flow-*/
+facturas_xml/
+*.xml
+venv/
+.venv/
+__pycache__/
+**/__pycache__/

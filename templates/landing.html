@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFDI Shield | Control CFDI</title>
+    <style>
+        :root {
+            --bg: #eef4f9;
+            --surface: rgba(255, 255, 255, 0.96);
+            --surface-soft: #f8fbff;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --line: #dbe4ee;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #0f766e;
+            --danger: #dc2626;
+            --warning: #b45309;
+            --success: #15803d;
+            --shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 24rem),
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.11), transparent 22rem),
+                var(--bg);
+        }
+
+        .shell {
+            width: min(1180px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 24px 0 48px;
+        }
+
+        .topbar,
+        .hero,
+        .section,
+        .demo-shot {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .topbar a,
+        .button,
+        .button-secondary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 42px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .topbar nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar nav a {
+            color: var(--muted);
+        }
+
+        .button {
+            border: 0;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        .button-secondary {
+            border: 1px solid var(--line);
+            background: #fff;
+            color: var(--ink);
+        }
+
+        .hero {
+            margin-top: 20px;
+            padding: 28px;
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 24px;
+            align-items: center;
+        }
+
+        h1 {
+            margin: 0 0 14px;
+            font-size: clamp(38px, 5vw, 58px);
+            line-height: 0.98;
+        }
+
+        .lead {
+            margin: 0;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            margin-top: 22px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .hero-points {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .point {
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .section-grid {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .section {
+            padding: 22px;
+        }
+
+        .section h2 {
+            margin: 0 0 12px;
+            font-size: 28px;
+        }
+
+        .section-copy {
+            margin: 0 0 18px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .card-list,
+        .steps,
+        .benefits {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item,
+        .step,
+        .benefit {
+            padding: 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+        }
+
+        .item strong,
+        .step strong,
+        .benefit strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 15px;
+        }
+
+        .item span,
+        .step span,
+        .benefit span {
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .demo-section {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 16px;
+        }
+
+        .demo-shot {
+            overflow: hidden;
+        }
+
+        .demo-frame {
+            padding: 16px;
+            background:
+                linear-gradient(180deg, rgba(37, 99, 235, 0.04), rgba(15, 118, 110, 0.04)),
+                #fff;
+        }
+
+        .browser-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #d5dde7;
+        }
+
+        .address {
+            flex: 1;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #f8fbff;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .shot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .shot-kpi,
+        .shot-panel,
+        .price-card,
+        .cta-band {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .shot-kpi {
+            padding: 12px;
+        }
+
+        .shot-kpi span {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .shot-kpi strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 22px;
+        }
+
+        .shot-panels {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 10px;
+        }
+
+        .shot-panel {
+            padding: 14px;
+        }
+
+        .shot-panel h3 {
+            margin: 0 0 10px;
+            font-size: 15px;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1.4fr 0.6fr 0.6fr;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid #eef3f8;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .row:last-child {
+            border-bottom: 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 24px;
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .badge.success { background: #ecfdf3; color: var(--success); }
+        .badge.warning { background: #fff7ed; color: var(--warning); }
+        .badge.danger { background: #fff1f2; color: var(--danger); }
+
+        .price-card {
+            padding: 22px;
+        }
+
+        .price-card h2 {
+            margin: 0 0 10px;
+            font-size: 28px;
+        }
+
+        .price-card strong {
+            display: block;
+            margin: 12px 0 8px;
+            font-size: 32px;
+        }
+
+        .price-list {
+            margin: 14px 0 0;
+            padding-left: 18px;
+            color: var(--muted);
+            line-height: 1.8;
+        }
+
+        .cta-band {
+            margin-top: 20px;
+            padding: 26px;
+            text-align: center;
+        }
+
+        .cta-band h2 {
+            margin: 0 0 10px;
+            font-size: 32px;
+        }
+
+        .cta-band p {
+            margin: 0 auto 18px;
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+
+        @media (max-width: 1020px) {
+            .hero,
+            .section-grid,
+            .demo-section,
+            .shot-panels {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-points,
+            .shot-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .topbar,
+            .topbar nav,
+            .hero-actions {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">CFDI</div>
+                <span>CFDI Shield</span>
+            </div>
+            <nav aria-label="Navegacion comercial">
+                <a href="#problema">Problema</a>
+                <a href="#solucion">Solucion</a>
+                <a href="#demo">Demo</a>
+                <a href="#precios">Precios</a>
+                <a class="button-secondary" href="/login">Entrar</a>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <div>
+                <h1>Controla tus CFDI y evita problemas con el SAT</h1>
+                <p class="lead">
+                    CFDI Shield valida facturas, detecta duplicados y genera reportes listos para auditoria,
+                    sin subir tu informacion a la nube.
+                </p>
+                <div class="hero-actions">
+                    <a class="button" href="mailto:fiscalguard@gmail.com?subject=Solicitar%20demo%20CFDI%20Shield">Solicitar demo</a>
+                    <a class="button-secondary" href="#demo">Ver demo</a>
+                </div>
+                <div class="hero-points">
+                    <div class="point">Validacion SAT bajo control del cliente</div>
+                    <div class="point">Operacion 100% local y sin nube propia</div>
+                    <div class="point">Reportes listos para revision y auditoria</div>
+                    <div class="point">Dashboard operativo con riesgos y proveedores</div>
+                </div>
+            </div>
+            <div class="demo-shot" aria-label="Vista estatica del dashboard">
+                <div class="demo-frame">
+                    <div class="browser-bar">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <div class="address">cfdi-shield.local/dashboard-web</div>
+                    </div>
+                    <div class="shot-grid">
+                        <div class="shot-kpi">
+                            <span>Total facturado</span>
+                            <strong>$423,840</strong>
+                        </div>
+                        <div class="shot-kpi">
+                            <span>Facturas</span>
+                            <strong>128</strong>
+                        </div>
+                        <div class="shot-kpi">
+                            <span>Riesgos altos</span>
+                            <strong>6</strong>
+                        </div>
+                    </div>
+                    <div class="shot-panels">
+                        <div class="shot-panel">
+                            <h3>Ultimas facturas</h3>
+                            <div class="row"><strong>Proveedor A</strong><span>$10,000</span><span class="badge success">Vigente</span></div>
+                            <div class="row"><strong>Proveedor B</strong><span>$8,450</span><span class="badge warning">Medio</span></div>
+                            <div class="row"><strong>Proveedor C</strong><span>$12,800</span><span class="badge danger">Alto</span></div>
+                        </div>
+                        <div class="shot-panel">
+                            <h3>Riesgos</h3>
+                            <div class="row"><strong>Duplicado UUID</strong><span></span><span class="badge danger">Alto</span></div>
+                            <div class="row"><strong>Cancelado</strong><span></span><span class="badge warning">Medio</span></div>
+                            <div class="row"><strong>Sin validacion</strong><span></span><span class="badge success">Bajo</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-grid">
+            <section id="problema" class="section">
+                <h2>El problema</h2>
+                <p class="section-copy">
+                    Muchas areas administrativas trabajan con CFDI dispersos, validaciones manuales y poco control
+                    sobre riesgos reales.
+                </p>
+                <div class="card-list">
+                    <article class="item">
+                        <strong>CFDI con errores</strong>
+                        <span>Facturas con datos inconsistentes, validaciones incompletas o problemas de captura.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Proveedores riesgosos</strong>
+                        <span>Poca visibilidad sobre cancelaciones, patrones repetidos o señales tempranas de riesgo.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Multas del SAT</strong>
+                        <span>Errores acumulados pueden traducirse en observaciones, ajustes o costos evitables.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Falta de control</strong>
+                        <span>Sin tablero ni reportes claros, la operacion depende demasiado de revisiones manuales.</span>
+                    </article>
+                </div>
+            </section>
+
+            <section id="solucion" class="section">
+                <h2>La solucion</h2>
+                <p class="section-copy">
+                    CFDI Shield ordena el flujo de revision y te da visibilidad inmediata sobre CFDI, proveedores y riesgos.
+                </p>
+                <div class="card-list">
+                    <article class="item">
+                        <strong>Validacion automatica SAT</strong>
+                        <span>Consulta estatus cuando el cliente lo habilita y mantiene cache para evitar trabajo repetido.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Deteccion de duplicados</strong>
+                        <span>Bloquea UUID repetidos antes de que alteren metricas o compliquen la operacion.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Analisis de riesgo fiscal</strong>
+                        <span>Clasifica alertas operativas para enfocar la revision donde realmente importa.</span>
+                    </article>
+                    <article class="item">
+                        <strong>Reportes en Excel</strong>
+                        <span>Exporta RESUMEN, CONTROL, PROVEEDORES y RIESGOS listos para compartir o auditar.</span>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+        <section class="section-grid">
+            <section class="section">
+                <h2>Como funciona</h2>
+                <p class="section-copy">
+                    El flujo esta pensado para ser directo, rapido y facil de adoptar dentro de una operacion real.
+                </p>
+                <div class="steps">
+                    <article class="step">
+                        <strong>1. Subes XML</strong>
+                        <span>Carga uno o varios CFDI en un solo paso, con validacion de extension y limites claros.</span>
+                    </article>
+                    <article class="step">
+                        <strong>2. CFDI Shield analiza</strong>
+                        <span>Revisa duplicados, estatus SAT, indicadores fiscales y resumenes por proveedor.</span>
+                    </article>
+                    <article class="step">
+                        <strong>3. Obtienes control total</strong>
+                        <span>Ves el dashboard, exportas Excel y decides con mas contexto operativo.</span>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Beneficios</h2>
+                <p class="section-copy">
+                    Pensado para equipos que necesitan control, velocidad y menor dependencia de procesos manuales.
+                </p>
+                <div class="benefits">
+                    <article class="benefit">
+                        <strong>Ahorro de tiempo</strong>
+                        <span>Menos revisiones dispersas y menos trabajo repetitivo con CFDI.</span>
+                    </article>
+                    <article class="benefit">
+                        <strong>Menos errores fiscales</strong>
+                        <span>Visibilidad clara sobre duplicados, riesgos y validaciones pendientes.</span>
+                    </article>
+                    <article class="benefit">
+                        <strong>Control de proveedores</strong>
+                        <span>Resumen por emisor con volumen, cancelaciones, IVA y score de riesgo.</span>
+                    </article>
+                    <article class="benefit">
+                        <strong>Funciona 100% local</strong>
+                        <span>El cliente conserva control operativo y evita depender de una nube externa propia.</span>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+        <section id="demo" class="demo-section">
+            <section class="section">
+                <h2>Demo</h2>
+                <p class="section-copy">
+                    La vista del dashboard muestra KPIs, facturas recientes, proveedores principales, riesgos y exportacion a Excel
+                    en una sola superficie de trabajo.
+                </p>
+                <p class="section-copy">
+                    Es ideal para demostraciones con direccion, auditoria interna, administracion y equipos de control documental.
+                </p>
+            </section>
+
+            <aside id="precios" class="price-card">
+                <h2>Precio de lanzamiento</h2>
+                <p class="section-copy">CFDI Shield se entrega como version local, con instalacion incluida y sin subir datos a la nube.</p>
+                <strong>$1,800 MXN</strong>
+                <p class="section-copy">Pago unico por licencia local de lanzamiento.</p>
+                <ul class="price-list">
+                    <li>Instalacion local incluida</li>
+                    <li>Operacion 100% local</li>
+                    <li>No sube datos a la nube</li>
+                    <li>Configuracion inicial y arranque</li>
+                    <li>Soporte anual opcional: $2,000 MXN</li>
+                    <li>Herramienta de apoyo, no sustituye asesoria fiscal</li>
+                </ul>
+                <div class="hero-actions">
+                    <a class="button" href="mailto:fiscalguard@gmail.com?subject=Solicitar%20demo%20CFDI%20Shield">Solicitar demo</a>
+                </div>
+            </aside>
+        </section>
+
+        <section class="cta-band">
+            <h2>Conoce CFDI Shield en una demo guiada</h2>
+            <p>
+                Si quieres ver el flujo completo con carga XML, dashboard, exportacion Excel y control de riesgos,
+                podemos mostrarte una demo enfocada en tu operacion.
+            </p>
+            <p>
+                Contacto: fiscalguard@gmail.com. CFDI Shield es una herramienta de apoyo en version local y no sustituye asesoria fiscal.
+            </p>
+            <a class="button" href="mailto:fiscalguard@gmail.com?subject=Agendar%20demo%20CFDI%20Shield">Agendar demo</a>
+        </section>
+    </main>
+</body>
+</html>

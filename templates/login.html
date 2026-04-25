@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFDI Shield | Login</title>
+    <style>
+        :root {
+            --bg: #eef3f8;
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-strong: #ffffff;
+            --ink: #111827;
+            --muted: #667085;
+            --line: #d8e0ea;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --accent: #0f766e;
+            --success-bg: #ecfdf3;
+            --success: #067647;
+            --error-bg: #fef2f2;
+            --error: #b42318;
+            --shadow: 0 18px 40px rgba(17, 24, 39, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30rem),
+                radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.12), transparent 26rem),
+                var(--bg);
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        .shell {
+            width: min(1120px, calc(100% - 32px));
+            min-height: 100vh;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) 430px;
+            gap: 28px;
+            align-items: center;
+            padding: 36px 0;
+        }
+
+        .hero,
+        .card {
+            background: var(--surface);
+            border: 1px solid rgba(216, 224, 234, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .hero {
+            padding: 36px;
+        }
+
+        .card {
+            padding: 28px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 28px;
+            font-weight: 900;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 46px;
+            height: 46px;
+            border-radius: 8px;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(36px, 5vw, 58px);
+            line-height: 1.02;
+        }
+
+        .lead,
+        .copy {
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        .lead {
+            margin: 18px 0 0;
+            font-size: 17px;
+            max-width: 620px;
+        }
+
+        .hero-grid {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .hero-stat {
+            padding: 16px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+        }
+
+        .hero-stat strong {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .hero-stat span {
+            color: var(--muted);
+            line-height: 1.55;
+            font-size: 14px;
+        }
+
+        .card h2 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .copy {
+            margin: 0 0 20px;
+        }
+
+        .alert {
+            padding: 12px 14px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .alert.success { background: var(--success-bg); color: var(--success); }
+        .alert.error { background: var(--error-bg); color: var(--error); }
+
+        .field {
+            display: grid;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        input {
+            width: 100%;
+            min-height: 48px;
+            padding: 11px 13px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+        }
+
+        .button {
+            width: 100%;
+            min-height: 48px;
+            border: 0;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 15px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background: linear-gradient(135deg, var(--primary-dark), #0f5f59);
+        }
+
+        .links {
+            margin-top: 16px;
+            display: grid;
+            gap: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .links a {
+            color: var(--primary-dark);
+            text-decoration: none;
+            font-weight: 900;
+        }
+
+        @media (max-width: 920px) {
+            .shell {
+                grid-template-columns: 1fr;
+                align-items: start;
+            }
+
+            .hero-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <section class="hero">
+            <div class="brand">
+                <div class="brand-mark">FG</div>
+                <span>CFDI Shield</span>
+            </div>
+            <h1>Entra a tu espacio de control fiscal.</h1>
+            <p class="lead">
+                Inicia sesion para cargar XML, revisar el dashboard y administrar tus CFDI desde una interfaz clara, estable y pensada para trabajo diario.
+            </p>
+
+            <div class="hero-grid">
+                <article class="hero-stat">
+                    <strong>Carga</strong>
+                    <span>Sube XML CFDI con feedback visible y redireccion directa al panel.</span>
+                </article>
+                <article class="hero-stat">
+                    <strong>Control</strong>
+                    <span>Consulta KPIs, tabla de facturas y alertas en una misma vista.</span>
+                </article>
+                <article class="hero-stat">
+                    <strong>Acceso</strong>
+                    <span>Protege la cuenta con recuperacion de contrasena y 2FA opcional.</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="card" aria-labelledby="login-title">
+            <h2 id="login-title">Iniciar sesion</h2>
+            <p class="copy">Usa tus credenciales para entrar al panel de trabajo.</p>
+
+            {% if message %}
+                <div class="alert success">{{ message }}</div>
+            {% endif %}
+            {% if error %}
+                <div class="alert error">{{ error }}</div>
+            {% endif %}
+
+            <form action="/login" method="post">
+                <div class="field">
+                    <label for="username">Usuario</label>
+                    <input id="username" name="username" type="text" autocomplete="username" required>
+                </div>
+                <div class="field">
+                    <label for="password">Contrasena</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required>
+                </div>
+                <button class="button" type="submit">Entrar al sistema</button>
+            </form>
+
+            <div class="links">
+                <a href="/forgot-password">Olvidaste tu contrasena?</a>
+                {% if enable_registration %}
+                    <a href="/register">Crear cuenta</a>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</body>
+</html>

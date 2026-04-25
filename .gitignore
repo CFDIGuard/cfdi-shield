@@ -1,0 +1,48 @@
+# Entorno
+.env
+*.env
+venv/
+.venv/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Logs
+app-debug.log
+*.log
+logs/
+
+# Base de datos
+facturas.db
+*.db
+
+# Archivos de ejecución / runtime
+run-flow-debug/
+run-flow-prod/
+run-flow-test/
+run-*/
+run/
+
+# Backups
+backups/
+backup/
+*.bak
+*.backup
+
+# Archivos de usuario (IMPORTANTE)
+uploads/
+*.xml
+
+# Build / distribución (CRÍTICO)
+dist/
+build/
+release/
+
+# PyInstaller
+*.spec
+
+# Sistema
+.DS_Store
+Thumbs.db
