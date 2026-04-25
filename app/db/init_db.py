@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from app.db.base import Base
 from app.db.session import engine
@@ -13,27 +13,64 @@ _init_lock = threading.Lock()
 _initialized = False
 
 
+def _database_dialect() -> str:
+    return engine.dialect.name
+
+
 def _column_names(table_name: str) -> set[str]:
+    if _database_dialect() == "sqlite":
+        with engine.begin() as connection:
+            rows = connection.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return {row[1] for row in rows}
+
+    inspector = inspect(engine)
+    return {column["name"] for column in inspector.get_columns(table_name)}
+
+
+def _bool_default(value: bool) -> str:
+    return "TRUE" if value else "FALSE"
+
+
+def _datetime_type() -> str:
+    return "TIMESTAMP"
+
+
+def _float_default(value: float) -> str:
+    return str(int(value)) if value == int(value) else str(value)
+
+
+def _add_column_statement(table_name: str, column_name: str, column_type: str, default: str | None = None) -> str:
+    statement = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"
+    if default is not None:
+        statement += f" DEFAULT {default}"
+    return statement
+
+
+def _execute_add_column_if_missing(table_name: str, column_name: str, statement: str) -> None:
+    columns = _column_names(table_name)
     with engine.begin() as connection:
-        rows = connection.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-    return {row[1] for row in rows}
+        if column_name not in columns:
+            connection.execute(text(statement))
 
 
 def _ensure_user_columns() -> None:
-    columns = _column_names("users")
     statements = {
-        "two_factor_enabled": "ALTER TABLE users ADD COLUMN two_factor_enabled BOOLEAN DEFAULT 0",
-        "use_sat_validation": "ALTER TABLE users ADD COLUMN use_sat_validation BOOLEAN DEFAULT 1",
-        "two_factor_code_hash": "ALTER TABLE users ADD COLUMN two_factor_code_hash VARCHAR",
-        "two_factor_expires_at": "ALTER TABLE users ADD COLUMN two_factor_expires_at DATETIME",
-        "password_reset_token_hash": "ALTER TABLE users ADD COLUMN password_reset_token_hash VARCHAR",
-        "password_reset_expires_at": "ALTER TABLE users ADD COLUMN password_reset_expires_at DATETIME",
+        "two_factor_enabled": _add_column_statement(
+            "users", "two_factor_enabled", "BOOLEAN", _bool_default(False)
+        ),
+        "use_sat_validation": _add_column_statement(
+            "users", "use_sat_validation", "BOOLEAN", _bool_default(True)
+        ),
+        "two_factor_code_hash": _add_column_statement("users", "two_factor_code_hash", "VARCHAR"),
+        "two_factor_expires_at": _add_column_statement("users", "two_factor_expires_at", _datetime_type()),
+        "password_reset_token_hash": _add_column_statement("users", "password_reset_token_hash", "VARCHAR"),
+        "password_reset_expires_at": _add_column_statement(
+            "users", "password_reset_expires_at", _datetime_type()
+        ),
     }
 
-    with engine.begin() as connection:
-        for column_name, statement in statements.items():
-            if column_name not in columns:
-                connection.execute(text(statement))
+    for column_name, statement in statements.items():
+        _execute_add_column_if_missing("users", column_name, statement)
 
 
 def _ensure_invoice_indexes() -> None:
@@ -44,27 +81,26 @@ def _ensure_invoice_indexes() -> None:
 
 
 def _ensure_invoice_columns() -> None:
-    columns = _column_names("invoices")
     statements = {
-        "archivo": "ALTER TABLE invoices ADD COLUMN archivo VARCHAR",
-        "razon_social": "ALTER TABLE invoices ADD COLUMN razon_social VARCHAR",
-        "folio": "ALTER TABLE invoices ADD COLUMN folio VARCHAR",
-        "fecha_emision": "ALTER TABLE invoices ADD COLUMN fecha_emision VARCHAR",
-        "mes": "ALTER TABLE invoices ADD COLUMN mes VARCHAR",
-        "subtotal": "ALTER TABLE invoices ADD COLUMN subtotal FLOAT DEFAULT 0",
-        "iva_retenido": "ALTER TABLE invoices ADD COLUMN iva_retenido FLOAT DEFAULT 0",
-        "isr_retenido": "ALTER TABLE invoices ADD COLUMN isr_retenido FLOAT DEFAULT 0",
-        "moneda": "ALTER TABLE invoices ADD COLUMN moneda VARCHAR",
-        "metodo_pago": "ALTER TABLE invoices ADD COLUMN metodo_pago VARCHAR",
-        "score_proveedor": "ALTER TABLE invoices ADD COLUMN score_proveedor FLOAT DEFAULT 0",
-        "detalle_riesgo": "ALTER TABLE invoices ADD COLUMN detalle_riesgo TEXT",
-        "sat_validado_at": "ALTER TABLE invoices ADD COLUMN sat_validado_at DATETIME",
+        "archivo": _add_column_statement("invoices", "archivo", "VARCHAR"),
+        "razon_social": _add_column_statement("invoices", "razon_social", "VARCHAR"),
+        "folio": _add_column_statement("invoices", "folio", "VARCHAR"),
+        "fecha_emision": _add_column_statement("invoices", "fecha_emision", "VARCHAR"),
+        "mes": _add_column_statement("invoices", "mes", "VARCHAR"),
+        "subtotal": _add_column_statement("invoices", "subtotal", "FLOAT", _float_default(0)),
+        "iva_retenido": _add_column_statement("invoices", "iva_retenido", "FLOAT", _float_default(0)),
+        "isr_retenido": _add_column_statement("invoices", "isr_retenido", "FLOAT", _float_default(0)),
+        "moneda": _add_column_statement("invoices", "moneda", "VARCHAR"),
+        "metodo_pago": _add_column_statement("invoices", "metodo_pago", "VARCHAR"),
+        "score_proveedor": _add_column_statement(
+            "invoices", "score_proveedor", "FLOAT", _float_default(0)
+        ),
+        "detalle_riesgo": _add_column_statement("invoices", "detalle_riesgo", "TEXT"),
+        "sat_validado_at": _add_column_statement("invoices", "sat_validado_at", _datetime_type()),
     }
 
-    with engine.begin() as connection:
-        for column_name, statement in statements.items():
-            if column_name not in columns:
-                connection.execute(text(statement))
+    for column_name, statement in statements.items():
+        _execute_add_column_if_missing("invoices", column_name, statement)
 
 
 def ensure_db_initialized() -> None:
