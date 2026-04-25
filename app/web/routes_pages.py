@@ -10,7 +10,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
-from app.services.invoice_processor import procesar_factura
+from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
 from app.templates import templates
 from app.services.xml_parser import parse_cfdi_xml
 from app.web.utils import web_url
@@ -42,6 +42,13 @@ def _build_upload_summary_message(
         f"{invalidas} invalidas, "
         f"{errores} errores."
     )
+
+
+def _format_upload_detail(filename: str, stage: str, reason: str) -> str:
+    safe_name = filename or "sin_nombre"
+    safe_stage = stage or "unknown"
+    safe_reason = reason or "Error no especificado"
+    return f"{safe_name} | {safe_stage} | {safe_reason}"
 
 
 def _sat_mode_view(current_user: User) -> tuple[bool, str]:
@@ -115,6 +122,7 @@ def upload_xml_web(
     duplicadas = 0
     invalidas = 0
     errores = 0
+    detail_lines: list[str] = []
 
     batch_uuids: set[str] = set()
     for current_file in uploads:
@@ -122,12 +130,22 @@ def upload_xml_web(
         if not filename.lower().endswith(".xml"):
             invalidas += 1
             logger.warning("Rejected non-XML upload: %s", filename or "sin_nombre")
+            detail_lines.append(
+                _format_upload_detail(filename, "parse_xml", "Extension no permitida")
+            )
             continue
 
         content = current_file.file.read()
         if len(content) > settings.max_upload_size_bytes:
             invalidas += 1
             logger.warning("Rejected oversized XML upload: %s", filename)
+            detail_lines.append(
+                _format_upload_detail(
+                    filename,
+                    "parse_xml",
+                    "Archivo excede el tamano maximo permitido",
+                )
+            )
             continue
 
         try:
@@ -135,15 +153,30 @@ def upload_xml_web(
         except ValueError as exc:
             invalidas += 1
             logger.warning("Invalid XML upload: %s", exc)
+            detail_lines.append(_format_upload_detail(filename, "parse_xml", str(exc)))
             continue
 
         if parsed_invoice.uuid in batch_uuids:
             duplicadas += 1
+            detail_lines.append(
+                _format_upload_detail(
+                    filename,
+                    "duplicate_check",
+                    f"UUID duplicado dentro de la misma carga (...{parsed_invoice.uuid[-8:]})",
+                )
+            )
             continue
 
         existing_invoice = repository.get_by_uuid(parsed_invoice.uuid)
         if existing_invoice is not None:
             duplicadas += 1
+            detail_lines.append(
+                _format_upload_detail(
+                    filename,
+                    "duplicate_check",
+                    f"UUID ya existe en base de datos (...{parsed_invoice.uuid[-8:]})",
+                )
+            )
             continue
 
         batch_uuids.add(parsed_invoice.uuid)
@@ -157,21 +190,45 @@ def upload_xml_web(
             )
             repository.create(invoice_data)
             nuevas += 1
+        except InvoiceProcessingError as exc:
+            db.rollback()
+            if exc.stage == "parse_xml":
+                invalidas += 1
+            else:
+                errores += 1
+            detail_lines.append(
+                _format_upload_detail(
+                    exc.filename or filename,
+                    exc.stage,
+                    exc.message,
+                )
+            )
         except ValueError as exc:
+            db.rollback()
             invalidas += 1
             logger.warning("Invalid XML upload during processing: %s", exc)
+            detail_lines.append(_format_upload_detail(filename, "parse_xml", str(exc)))
         except IntegrityError:
             db.rollback()
             duplicadas += 1
+            detail_lines.append(
+                _format_upload_detail(
+                    filename,
+                    "database_insert",
+                    "Conflicto de base de datos al guardar la factura",
+                )
+            )
         except Exception as exc:
             db.rollback()
             errores += 1
             logger.exception("Unexpected error processing XML upload %s: %s", filename, exc)
+            detail_lines.append(_format_upload_detail(filename, "unknown", str(exc)))
 
     return RedirectResponse(
         url=web_url(
             "/dashboard-web",
             message=_build_upload_summary_message(nuevas, duplicadas, invalidas, errores),
+            details="\n".join(detail_lines[:20]) if detail_lines else None,
         ),
         status_code=status.HTTP_303_SEE_OTHER,
     )
@@ -182,6 +239,7 @@ def dashboard_web(
     request: Request,
     message: str | None = None,
     error: str | None = None,
+    details: str | None = None,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
@@ -203,6 +261,7 @@ def dashboard_web(
             "invoices": invoices,
             "message": message,
             "error": error,
+            "details": details,
             "current_user": current_user,
             "use_sat_validation": current_user.use_sat_validation,
             "sat_mode_effective": sat_mode_effective,

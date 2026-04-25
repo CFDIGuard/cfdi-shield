@@ -556,6 +556,14 @@
         {% if error %}
             <div class="alert error">Atencion. {{ error }}</div>
         {% endif %}
+        {% if details %}
+            <div class="alert error">
+                <div>
+                    <strong style="display:block; margin-bottom:6px;">Detalle de archivos con incidencia</strong>
+                    <div style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 1.6;">{{ details }}</div>
+                </div>
+            </div>
+        {% endif %}
 
         <section class="kpis" aria-label="Indicadores principales">
             <article class="kpi">
