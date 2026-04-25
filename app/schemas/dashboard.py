@@ -28,6 +28,40 @@ class RiskSummary(BaseModel):
     mes: str | None = None
 
 
+class FiscalRiskInvoiceRow(BaseModel):
+    uuid: str
+    rfc_emisor: str
+    proveedor: str
+    fecha: str | None = None
+    moneda: str
+    total_original: float
+    total_mxn: float | None = None
+    estatus_sat: str
+    riesgo: str
+    motivo: str
+
+
+class FiscalRiskSupplierRow(BaseModel):
+    rfc_emisor: str
+    proveedor: str
+    facturas: int
+    total_mxn: float
+    canceladas: int
+    porcentaje_canceladas: float
+    score_riesgo: float
+    monedas_usadas: str
+    operaciones_repetidas: int
+    riesgo_acumulado: str
+    motivo: str
+    flag_requiere_contrato: bool
+
+
+class FiscalRiskMetricRow(BaseModel):
+    indicador: str
+    valor: int
+    detalle: str
+
+
 class MonthlySummary(BaseModel):
     mes: str
     facturas: int
@@ -85,6 +119,9 @@ class DashboardSummary(BaseModel):
     riesgo_bajo: int
     top_proveedores: list[ProviderSummary]
     riesgos: list[RiskSummary]
+    rr1_count: int = 0
+    rr9_count: int = 0
+    rr9_alertas: list[FiscalRiskSupplierRow] = []
 
 
 class ReportsBundle(BaseModel):
@@ -92,3 +129,6 @@ class ReportsBundle(BaseModel):
     control: list[ControlRow]
     proveedores: list[ProviderSummary]
     riesgos: list[RiskSummary]
+    rr1: list[FiscalRiskInvoiceRow] = []
+    rr9: list[FiscalRiskSupplierRow] = []
+    resumen_riesgos: list[FiscalRiskMetricRow] = []

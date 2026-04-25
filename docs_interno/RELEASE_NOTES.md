@@ -15,6 +15,7 @@ Version final estable para entrega comercial, con instalador Windows generado y 
 - incluye templates y static compatibles con PyInstaller
 - incluye SAT activo por defecto
 - sin endpoints `/debug/*`
+- incluye `SHA256.txt` para verificar integridad del instalador y del archivo `.zip`
 
 ## Funcionalidades incluidas
 
@@ -38,6 +39,22 @@ Version final estable para entrega comercial, con instalador Windows generado y 
 - exportacion Excel desde dashboard y API
 - scripts de instalacion e inicio para Windows
 - documentacion de usuario, instalacion, privacidad, soporte y ventas
+
+## RR9 - Riesgo por proveedor
+
+- score de riesgo `0` a `100`
+- clasificacion `LOW / MEDIUM / HIGH`
+- deteccion de concentracion por proveedor
+- deteccion de volumen alto de CFDI
+- deteccion de patrones repetidos por `RFC + monto`
+- deteccion de cancelaciones
+- deteccion de operaciones en moneda extranjera
+- deteccion de datos incompletos o conversion pendiente
+- bandera: requiere soporte contractual
+
+Nota:
+El analisis RR9 se basa unicamente en CFDI y operaciones con proveedores.
+No analiza accionistas, consejeros ni estructura corporativa.
 
 ## Requisitos
 

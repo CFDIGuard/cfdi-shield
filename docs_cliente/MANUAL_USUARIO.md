@@ -1,9 +1,9 @@
-# Manual de Usuario - FiscalGuard
+# Manual de Usuario - CFDI Shield
 
 ## 1. Acceso al sistema
 
 ### Iniciar sesion
-1. Abre FiscalGuard en tu navegador.
+1. Abre CFDI Shield en tu navegador.
 2. Ingresa tu usuario y contrasena.
 3. Haz clic en `Entrar`.
 
@@ -24,7 +24,7 @@ Si la verificacion en dos pasos esta activa:
 3. Haz clic en `Procesar carga`.
 
 ### Carga multiple
-FiscalGuard permite cargar hasta 20 XML por envio.
+CFDI Shield permite cargar hasta 20 XML por envio.
 
 1. En la pantalla `Cargar`, selecciona varios archivos XML.
 2. Verifica que la lista muestre los archivos elegidos.
@@ -58,9 +58,12 @@ Tambien incluye:
 - seccion de riesgos destacados
 - resumen por periodo
 
+Nota sobre RR9:
+El analisis RR9 de CFDI Shield evalua riesgo por proveedor con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
+
 ## 4. Exportar Excel
 
-FiscalGuard puede exportar reportes V3 a Excel.
+CFDI Shield puede exportar reportes V3 a Excel.
 
 1. Entra al dashboard.
 2. Haz clic en `Exportar Excel`.

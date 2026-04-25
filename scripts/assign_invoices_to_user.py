@@ -8,8 +8,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from sqlalchemy import text
+
+from app.db.init_db import ensure_db_initialized
 from app.db.session import SessionLocal
-from app.services.invoice_maintenance_service import assign_invoices_to_user
+from app.repositories.user_repository import UserRepository
+from app.services.security_utils import mask_username
 
 
 def _confirm(message: str) -> bool:
@@ -28,38 +32,42 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    ensure_db_initialized()
     with SessionLocal() as db:
-        try:
-            preview = assign_invoices_to_user(
-                db=db,
-                email=args.email,
-                assign_all=args.assign_all,
-                apply_changes=False,
+        normalized_email = args.email.strip().lower()
+        user = UserRepository(db).get_by_username(normalized_email)
+        if user is None:
+            raise SystemExit(f"Usuario no encontrado: {args.email}")
+
+        if args.assign_all:
+            count = int(db.execute(text("SELECT COUNT(*) FROM invoices")).scalar_one())
+        else:
+            count = int(
+                db.execute(text("SELECT COUNT(*) FROM invoices WHERE user_id IS NULL")).scalar_one()
             )
-        except ValueError as exc:
-            raise SystemExit(str(exc)) from exc
 
         print(
-            f"Se reasignaran {preview['affected_invoices']} factura(s) al usuario "
-            f"{preview['target_email']} (id={preview['target_user_id']})."
+            f"Se reasignaran {count} factura(s) al usuario "
+            f"{mask_username(user.username)} (id={user.id})."
         )
-        if preview["affected_invoices"] == 0:
+        if count == 0:
             print("No hay facturas por reasignar.")
             return
-        db.rollback()
 
         if not _confirm("Confirma la operacion"):
             print("Operacion cancelada.")
             return
 
-        result = assign_invoices_to_user(
-            db=db,
-            email=args.email,
-            assign_all=args.assign_all,
-            apply_changes=True,
-        )
+        if args.assign_all:
+            db.execute(text("UPDATE invoices SET user_id = :user_id"), {"user_id": user.id})
+        else:
+            db.execute(
+                text("UPDATE invoices SET user_id = :user_id WHERE user_id IS NULL"),
+                {"user_id": user.id},
+            )
+        db.commit()
         print(
-            f"Reasignacion completada correctamente. Facturas afectadas: {result['affected_invoices']}."
+            f"Reasignacion completada correctamente. Facturas afectadas: {count}."
         )
 
 

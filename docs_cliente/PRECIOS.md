@@ -1,4 +1,4 @@
-# Precios - FiscalGuard
+# Precios - CFDI Shield
 
 ## 1. Plan Local Basico
 
@@ -97,7 +97,7 @@ Todo lo del Plan Local Basico, mas:
 
 ## 5. Notas comerciales
 
-- FiscalGuard se ofrece como solucion local para control de CFDI.
+- CFDI Shield se ofrece como solucion local para control de CFDI.
 - precio comercial de lanzamiento recomendado:
   - **$1,800 MXN pago unico**
   - **$2,000 MXN soporte anual opcional**
@@ -114,7 +114,7 @@ Todo lo del Plan Local Basico, mas:
 
 ## 6. Aclaracion importante
 
-FiscalGuard es una **herramienta de apoyo operativo y administrativo**.
+CFDI Shield es una **herramienta de apoyo operativo y administrativo**.
 
 No sustituye:
 - asesoria fiscal

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+
 from app.schemas.invoice import InvoiceProcessedData
 
 
@@ -119,3 +121,165 @@ def calcular_riesgo(estatus_sat: str, total: float) -> str:
     if normalized_sat == "SIN_VALIDACION":
         return "BAJO"
     return "BAJO"
+
+
+def _rr9_currency(invoice) -> str:
+    return str(getattr(invoice, "moneda_original", None) or getattr(invoice, "moneda", None) or "MXN").upper()
+
+
+def _rr9_total_original(invoice) -> float:
+    return float(getattr(invoice, "total_original", None) or getattr(invoice, "total", None) or 0)
+
+
+def _rr9_total_mxn(invoice) -> float | None:
+    total_mxn = getattr(invoice, "total_mxn", None)
+    if total_mxn is not None:
+        return float(total_mxn)
+    if _rr9_currency(invoice) == "MXN":
+        return _rr9_total_original(invoice)
+    return None
+
+
+def _rr9_level_from_score(score: float) -> str:
+    if score >= 70:
+        return "HIGH"
+    if score >= 35:
+        return "MEDIUM"
+    return "LOW"
+
+
+def calculate_rr9_score(invoices_by_supplier: dict[str, list[object]]) -> dict[str, dict[str, object]]:
+    all_totals_mxn = [
+        amount
+        for supplier_invoices in invoices_by_supplier.values()
+        for invoice in supplier_invoices
+        if (amount := _rr9_total_mxn(invoice)) is not None and amount > 0
+    ]
+    overall_total_mxn = float(sum(all_totals_mxn))
+    avg_invoice_total_mxn = float(sum(all_totals_mxn) / len(all_totals_mxn)) if all_totals_mxn else 0.0
+
+    results: dict[str, dict[str, object]] = {}
+
+    for rfc_emisor, invoices in invoices_by_supplier.items():
+        if not invoices:
+            continue
+
+        total_mxn = float(sum(_rr9_total_mxn(invoice) or 0 for invoice in invoices))
+        facturas = len(invoices)
+        canceladas = sum(1 for invoice in invoices if str(getattr(invoice, "estatus_sat", "") or "").upper() == "CANCELADO")
+        concentration_pct = round((total_mxn / overall_total_mxn * 100) if overall_total_mxn else 0.0, 2)
+        monthly_counts = Counter(str(getattr(invoice, "mes", None) or "SIN_MES") for invoice in invoices)
+        peak_period_volume = max(monthly_counts.values()) if monthly_counts else facturas
+
+        repeated_keys = Counter()
+        monedas_usadas = set()
+        pending_fx_count = 0
+        high_count = 0
+        medium_count = 0
+        incomplete_count = 0
+        max_invoice_total = 0.0
+        sum_invoice_totals = 0.0
+
+        for invoice in invoices:
+            amount_reference = _rr9_total_mxn(invoice)
+            if amount_reference is None:
+                amount_reference = _rr9_total_original(invoice)
+            repeated_keys[(str(getattr(invoice, "rfc_emisor", "") or ""), round(amount_reference, 2))] += 1
+            monedas_usadas.add(_rr9_currency(invoice))
+            if _rr9_currency(invoice) != "MXN" and (
+                _rr9_total_mxn(invoice) is None or str(getattr(invoice, "fuente_tipo_cambio", "") or "").upper() == "PENDIENTE"
+            ):
+                pending_fx_count += 1
+            invoice_risk = str(getattr(invoice, "riesgo", "") or "").upper()
+            if invoice_risk == "ALTO":
+                high_count += 1
+            elif invoice_risk == "MEDIO":
+                medium_count += 1
+            if not getattr(invoice, "rfc_emisor", None) or not getattr(invoice, "razon_social", None) or not getattr(invoice, "fecha_emision", None):
+                incomplete_count += 1
+            max_invoice_total = max(max_invoice_total, amount_reference)
+            sum_invoice_totals += amount_reference
+
+        operaciones_repetidas = sum(
+            1
+            for invoice in invoices
+            if repeated_keys[
+                (
+                    str(getattr(invoice, "rfc_emisor", "") or ""),
+                    round((_rr9_total_mxn(invoice) if _rr9_total_mxn(invoice) is not None else _rr9_total_original(invoice)), 2),
+                )
+            ] > 1
+        )
+        proveedor_promedio = float(sum_invoice_totals / facturas) if facturas else 0.0
+        concentration_score = 25 if concentration_pct > 30 else 0
+        volume_score = 15 if (peak_period_volume >= 5 or facturas >= 8) else 0
+        repetition_score = 15 if operaciones_repetidas >= 2 else 0
+        cancellation_score = 10 if canceladas > 0 else 0
+        currency_score = 10 if pending_fx_count > 0 else 0
+        incomplete_score = 10 if incomplete_count > 0 else 0
+        atypical_score = 15 if (
+            (avg_invoice_total_mxn > 0 and max_invoice_total >= max(avg_invoice_total_mxn * 3, 100000.0))
+            or (proveedor_promedio > 0 and max_invoice_total >= max(proveedor_promedio * 2.5, 100000.0))
+        ) else 0
+
+        rr9_score = float(
+            min(
+                100,
+                concentration_score
+                + volume_score
+                + repetition_score
+                + cancellation_score
+                + currency_score
+                + incomplete_score
+                + atypical_score,
+            )
+        )
+        rr9_score = round(min(100.0, rr9_score + min(10.0, high_count * 4 + medium_count * 2)), 2)
+
+        risk_level = _rr9_level_from_score(rr9_score)
+        reasons: list[str] = []
+        if concentration_score:
+            reasons.append(f"Concentracion de gasto alta ({concentration_pct:.2f}%)")
+        if volume_score:
+            reasons.append("Volumen alto de CFDI en periodo corto")
+        if repetition_score:
+            reasons.append("Operaciones repetidas por mismo RFC y monto")
+        if cancellation_score:
+            reasons.append("Proveedor con CFDI cancelados")
+        if currency_score:
+            reasons.append("Operaciones en moneda extranjera sin tipo de cambio")
+        if incomplete_score:
+            reasons.append("Datos CFDI incompletos para analisis")
+        if atypical_score:
+            reasons.append("Importes atipicos frente al historico")
+        if high_count or medium_count:
+            reasons.append("Riesgo acumulado por CFDI del proveedor")
+
+        flag_requiere_contrato = bool(
+            concentration_score
+            or volume_score
+            or repetition_score
+            or atypical_score
+            or total_mxn >= 250000
+        )
+        if flag_requiere_contrato:
+            reasons.append("Operacion que probablemente requiere contrato")
+
+        results[rfc_emisor] = {
+            "total_mxn": round(total_mxn, 2),
+            "facturas": facturas,
+            "canceladas": canceladas,
+            "porcentaje_canceladas": round((canceladas / facturas * 100) if facturas else 0.0, 2),
+            "score_riesgo": rr9_score,
+            "risk_level": risk_level,
+            "risk_reason": "; ".join(reasons),
+            "flag_requiere_contrato": flag_requiere_contrato,
+            "operaciones_repetidas": operaciones_repetidas,
+            "monedas_usadas": ", ".join(sorted(monedas_usadas)),
+            "concentration_pct": concentration_pct,
+            "promedio_historico": round(proveedor_promedio, 2),
+            "pending_fx_count": pending_fx_count,
+            "incomplete_count": incomplete_count,
+        }
+
+    return results

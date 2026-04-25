@@ -211,6 +211,12 @@
             color: var(--primary);
         }
 
+        .report-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
         .highlight {
             display: inline-flex;
             align-items: center;
@@ -592,6 +598,7 @@
                     <a href="#ultimos-cfdi">Ultimos CFDI</a>
                     <a href="#proveedores-principales">Proveedores principales</a>
                     <a href="#resumen-periodo">Resumen del periodo</a>
+                    <a href="#reportes-fiscales">Reportes fiscales</a>
                 </nav>
             </div>
             <div class="toolbar">
@@ -891,6 +898,61 @@
                     </div>
                 </section>
 
+                <section class="panel" id="reportes-fiscales">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Reportes de riesgo fiscal RR1 / RR9</div>
+                            <div class="panel-copy">Analisis interno por CFDI individual y por proveedor. No se presenta como formato oficial SAT.</div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="summary-grid">
+                            <article class="mini-metric">
+                                <span>Filas RR1</span>
+                                <strong>{{ summary.rr1_count }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Filas RR9</span>
+                                <strong>{{ summary.rr9_count }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Indicadores</span>
+                                <strong>{{ reports.resumen_riesgos | length }}</strong>
+                            </article>
+                        </div>
+                        <div class="report-actions" style="margin-top: 12px;">
+                            <a class="logout-button" href="/api/v1/dashboard/reports/rr1" target="_blank" rel="noopener noreferrer">Ver RR1</a>
+                            <a class="logout-button" href="/api/v1/dashboard/export-rr1-excel">Exportar RR1</a>
+                            <a class="logout-button" href="/api/v1/dashboard/reports/rr9" target="_blank" rel="noopener noreferrer">Ver RR9</a>
+                            <a class="logout-button" href="/api/v1/dashboard/export-rr9-excel">Exportar RR9</a>
+                        </div>
+                        {% if reports.resumen_riesgos %}
+                            <div class="table-wrap dashboard-scroll-section" style="margin-top: 12px;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Indicador</th>
+                                            <th>Valor</th>
+                                            <th>Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in reports.resumen_riesgos %}
+                                            <tr>
+                                                <td>{{ item.indicador }}</td>
+                                                <td>{{ item.valor }}</td>
+                                                <td>{{ item.detalle }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="empty">Todavia no hay filas para RR1 o RR9.</div>
+                        {% endif %}
+                    </div>
+                </section>
+
                 <section class="panel" id="riesgos-detectados">
                     <div class="panel-header">
                         <div>
@@ -899,7 +961,7 @@
                         </div>
                     </div>
                     <div class="panel-body">
-                        {% if summary.riesgos %}
+                        {% if summary.riesgos or summary.rr9_alertas %}
                             <div class="risk-list dashboard-scroll-section">
                                 {% for riesgo in summary.riesgos %}
                                     <article class="risk-item">
@@ -915,6 +977,30 @@
                                         </div>
                                         {% if riesgo.detalle_riesgo %}
                                             <div class="risk-copy">{{ riesgo.detalle_riesgo }}</div>
+                                        {% endif %}
+                                    </article>
+                                {% endfor %}
+                                {% for proveedor_rr9 in summary.rr9_alertas %}
+                                    <article class="risk-item">
+                                        <div class="risk-head">
+                                            <div>
+                                                <div class="risk-title">{{ proveedor_rr9.proveedor }}</div>
+                                                <div class="risk-copy">{{ proveedor_rr9.rfc_emisor }}</div>
+                                            </div>
+                                            {% if proveedor_rr9.riesgo_acumulado == "ALTO" %}
+                                                <span class="tag high">RR9 ALTO</span>
+                                            {% elif proveedor_rr9.riesgo_acumulado == "MEDIO" %}
+                                                <span class="tag warning">RR9 MEDIO</span>
+                                            {% else %}
+                                                <span class="tag info">RR9</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="risk-copy">
+                                            ${{ "{:,.2f}".format(proveedor_rr9.total_mxn) }} | {{ proveedor_rr9.facturas }} CFDI | score {{ proveedor_rr9.score_riesgo }}
+                                        </div>
+                                        <div class="risk-copy">{{ proveedor_rr9.motivo }}</div>
+                                        {% if proveedor_rr9.flag_requiere_contrato %}
+                                            <div class="risk-copy">Operacion que probablemente requiere contrato.</div>
                                         {% endif %}
                                     </article>
                                 {% endfor %}

@@ -1,4 +1,4 @@
-# Demo Checklist - FiscalGuard
+# Demo Checklist - CFDI Shield
 
 ## 1. Preparacion antes de la demo
 
@@ -28,7 +28,7 @@ Ten a la mano:
 ### Paso 1. Contexto breve
 Explica en 20 a 30 segundos:
 
-- que FiscalGuard ayuda a controlar CFDI
+- que CFDI Shield ayuda a controlar CFDI
 - que trabaja en local
 - que evita subir informacion a la nube
 
@@ -129,7 +129,7 @@ No empieces por:
 
 Cierrala con una idea simple:
 
-- FiscalGuard te da control sobre CFDI
+- CFDI Shield te da control sobre CFDI
 - reduce trabajo manual
 - ayuda a detectar problemas antes de que crezcan
 - opera localmente
@@ -169,4 +169,4 @@ Luego haz una invitacion clara:
 
 Frase final:
 
-`Lo importante de FiscalGuard es que no solo guarda CFDI: te da control, contexto y trazabilidad para operar con menos riesgo y menos trabajo manual.`
+`Lo importante de CFDI Shield es que no solo guarda CFDI: te da control, contexto y trazabilidad para operar con menos riesgo y menos trabajo manual.`

@@ -1,8 +1,8 @@
-# Release Checklist - FiscalGuard
+# Release Checklist - CFDI Shield
 
 ## Objetivo
 
-Usar esta lista para validar la salida de `FiscalGuard v1.0 RC` antes de entrega o instalacion en cliente.
+Usar esta lista para validar la salida de `CFDI Shield v1.0 RC` antes de entrega o instalacion en cliente.
 
 ## 1. Prueba final en cliente
 

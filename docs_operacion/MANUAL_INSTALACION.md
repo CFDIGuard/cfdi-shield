@@ -15,7 +15,7 @@ Para instalar CFDI Shield en Windows se recomienda:
 - `start.bat`
 - `stop.bat`
 - `.env.example`
-- `README_LOCAL.md`
+- `docs_operacion/README_LOCAL.md`
 
 ## 3. Instalacion inicial
 

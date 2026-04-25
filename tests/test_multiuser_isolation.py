@@ -74,8 +74,17 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
 
         repo_a = InvoiceRepository(db, user_id=user_a.id)
         repo_b = InvoiceRepository(db, user_id=user_b.id)
-        invoice_a = repo_a.create(_make_invoice(user_a.id, "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA", 100.0, "Proveedor A"))
-        invoice_b = repo_b.create(_make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B"))
+        invoice_a_payload = _make_invoice(user_a.id, "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA", 100.0, "Proveedor A")
+        invoice_a_payload.estatus_sat = "CANCELADO"
+        invoice_a_payload.riesgo = "ALTO"
+        invoice_a_payload.detalle_riesgo = "CFDI cancelado"
+        invoice_a = repo_a.create(invoice_a_payload)
+
+        invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
+        invoice_b_payload.estatus_sat = "SIN_VALIDACION"
+        invoice_b_payload.riesgo = "MEDIO"
+        invoice_b_payload.detalle_riesgo = "CFDI sin validacion SAT"
+        invoice_b = repo_b.create(invoice_b_payload)
 
     client = TestClient(app)
     cookie_name = settings.session_cookie_name
@@ -99,6 +108,22 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Proveedor B" in values_b
     assert "Proveedor A" not in values_b
     assert "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA" not in values_b
+
+    rr1_a = client.get("/api/v1/dashboard/export-rr1-excel", cookies=cookie_a)
+    assert rr1_a.status_code == 200
+    rr1_book_a = load_workbook(filename=BytesIO(rr1_a.content))
+    rr1_sheet_a = rr1_book_a["RR1"]
+    rr1_values_a = "\n".join("" if cell is None else str(cell) for row in rr1_sheet_a.iter_rows(values_only=True) for cell in row)
+    assert "Proveedor A" in rr1_values_a
+    assert "Proveedor B" not in rr1_values_a
+
+    rr9_b = client.get("/api/v1/dashboard/export-rr9-excel", cookies=cookie_b)
+    assert rr9_b.status_code == 200
+    rr9_book_b = load_workbook(filename=BytesIO(rr9_b.content))
+    rr9_sheet_b = rr9_book_b["RR9"]
+    rr9_values_b = "\n".join("" if cell is None else str(cell) for row in rr9_sheet_b.iter_rows(values_only=True) for cell in row)
+    assert "Proveedor B" in rr9_values_b
+    assert "Proveedor A" not in rr9_values_b
 
     get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b.id}", cookies=cookie_a)
     assert get_b_as_a.status_code == 404

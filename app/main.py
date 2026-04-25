@@ -45,7 +45,6 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     def startup_log() -> None:
         logger.info("Starting %s v%s", settings.app_name, settings.app_version)
-        print("Maintenance routes loaded")
         logger.info(
             "Runtime config debug=%s local_mode=%s sat_validation=%s port=%s",
             settings.debug,

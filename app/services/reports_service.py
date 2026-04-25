@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from app.models.invoice import Invoice
+from app.services.fiscal_risk_reports_service import build_fiscal_risk_reports
 from app.services.supplier_score import calculate_supplier_score
 
 
@@ -207,6 +208,7 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
     control = _build_control_report(invoices)
     proveedores = _build_provider_report(invoices)
     riesgos = _build_risk_report(invoices)
+    fiscal_risk_reports = build_fiscal_risk_reports(invoices)
 
     total_facturado = float(sum(_mxn_amount(invoice) for invoice in invoices))
     total_iva = float(sum(invoice.iva or 0 for invoice in invoices))
@@ -236,12 +238,20 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
             "riesgo_bajo": riesgo_bajo,
             "top_proveedores": proveedores[:5],
             "riesgos": [row for row in riesgos if row["riesgo"] == "ALTO"][:8],
+            "rr1_count": len(fiscal_risk_reports["rr1"]),
+            "rr9_count": len(fiscal_risk_reports["rr9"]),
+            "rr9_alertas": [
+                row for row in fiscal_risk_reports["rr9"] if str(row.get("riesgo_acumulado", "")).upper() in {"ALTO", "MEDIO"}
+            ][:8],
         },
         "reports": {
             "resumen": resumen,
             "control": control,
             "proveedores": proveedores,
             "riesgos": riesgos,
+            "rr1": fiscal_risk_reports["rr1"],
+            "rr9": fiscal_risk_reports["rr9"],
+            "resumen_riesgos": fiscal_risk_reports["resumen_riesgos"],
         },
     }
 

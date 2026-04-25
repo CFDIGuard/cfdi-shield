@@ -1,8 +1,8 @@
-# Alcance de Soporte - FiscalGuard
+# Alcance de Soporte - CFDI Shield
 
 ## 1. Que incluye el soporte
 
-El soporte de FiscalGuard puede incluir:
+El soporte de CFDI Shield puede incluir:
 
 - instalacion inicial
 - configuracion de `.env`
@@ -58,9 +58,9 @@ Para una atencion mas rapida se recomienda compartir:
 
 ## 6. Contacto
 
-El canal de soporte oficial debe definirse por el responsable comercial de FiscalGuard.
+El canal de soporte oficial debe definirse por el responsable comercial de CFDI Shield.
 
 Ejemplo:
 
-- correo: `soporte@fiscalguard.local`
+- correo: `soporte@cfdi-shield.local`
 - horario: `Lunes a Viernes, 9:00 a 18:00`

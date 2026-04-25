@@ -1,8 +1,10 @@
-# Aviso de Privacidad - FiscalGuard
+# Aviso de Privacidad - CFDI Shield
 
 ## 1. Naturaleza del sistema
 
-FiscalGuard se ofrece como una solucion local para procesamiento y control de CFDI.
+CFDI Shield se ofrece como una solucion local para procesamiento y control de CFDI.
+
+CFDI Shield es una herramienta de analisis basada en informacion proporcionada por el usuario. No sustituye asesoria fiscal, contable o legal profesional.
 
 En su version local:
 - no opera como servicio en la nube
@@ -35,7 +37,7 @@ Los datos se tratan con las siguientes finalidades:
 
 ## 4. Conservacion y ubicacion de los datos
 
-Los datos se almacenan localmente en el entorno donde el cliente instala FiscalGuard, principalmente en su base de datos y archivos de configuracion.
+Los datos se almacenan localmente en el entorno donde el cliente instala CFDI Shield, principalmente en su base de datos y archivos de configuracion.
 
 La permanencia de la informacion depende de:
 - politicas internas del cliente
@@ -44,7 +46,7 @@ La permanencia de la informacion depende de:
 
 ## 5. Transferencias
 
-En modo local, FiscalGuard no transfiere datos a terceros de forma automatica.
+En modo local, CFDI Shield no transfiere datos a terceros de forma automatica.
 
 Excepciones operativas:
 - consulta SAT, solo si el cliente habilita la validacion SAT
@@ -52,7 +54,7 @@ Excepciones operativas:
 
 ## 6. Medidas generales
 
-FiscalGuard incorpora medidas como:
+CFDI Shield incorpora medidas como:
 - autenticacion con usuario y contrasena
 - cookies HTTP-only
 - hash de contrasenas
@@ -70,9 +72,9 @@ El cliente conserva control operativo sobre:
 
 ## 8. Contacto
 
-Para temas de privacidad, soporte o aclaraciones, el responsable comercial u operativo de FiscalGuard debera colocar aqui su medio de contacto oficial.
+Para temas de privacidad, soporte o aclaraciones, el responsable comercial u operativo de CFDI Shield debera colocar aqui su medio de contacto oficial.
 
 Ejemplo:
 
-- correo: `soporte@fiscalguard.local`
+- correo: `soporte@cfdi-shield.local`
 - telefono: `pendiente de definir`

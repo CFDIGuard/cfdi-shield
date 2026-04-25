@@ -1,8 +1,8 @@
-# Terminos de Uso - FiscalGuard
+# Terminos de Uso - CFDI Shield
 
 ## 1. Objeto
 
-FiscalGuard es una herramienta de apoyo para procesamiento, control y seguimiento de CFDI en entornos locales u on-premise.
+CFDI Shield es una herramienta de apoyo para procesamiento, control y seguimiento de CFDI en entornos locales u on-premise.
 
 ## 2. Alcance
 
@@ -16,7 +16,9 @@ El sistema permite, entre otras funciones:
 
 ## 3. Herramienta de apoyo
 
-FiscalGuard es una herramienta de apoyo administrativo y operativo.
+CFDI Shield es una herramienta de apoyo administrativo y operativo.
+
+CFDI Shield es una herramienta de analisis basada en informacion proporcionada por el usuario. No sustituye asesoria fiscal, contable o legal profesional.
 
 No sustituye:
 - asesoria fiscal
@@ -43,7 +45,7 @@ El usuario debe:
 
 ## 6. Limites de garantia
 
-FiscalGuard se entrega como herramienta operativa.
+CFDI Shield se entrega como herramienta operativa.
 
 No se garantiza:
 - ausencia absoluta de errores
@@ -69,4 +71,4 @@ Es responsabilidad del usuario mantener respaldos periodicos de:
 
 ## 9. Uso permitido
 
-FiscalGuard debe utilizarse solo para fines licitos, internos y compatibles con la normatividad aplicable al cliente.
+CFDI Shield debe utilizarse solo para fines licitos, internos y compatibles con la normatividad aplicable al cliente.

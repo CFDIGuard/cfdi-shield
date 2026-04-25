@@ -62,7 +62,7 @@ La aplicacion conserva la logica fiscal validada y el flujo web principal ya que
 Minimas para entorno funcional:
 
 ```env
-APP_NAME=Facturas API
+APP_NAME=CFDI Shield
 DEBUG=False
 PORT=8000
 APP_SECRET_KEY=tu_clave_larga_y_privada
