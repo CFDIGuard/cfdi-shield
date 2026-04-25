@@ -78,6 +78,7 @@ def _ensure_invoice_indexes() -> None:
         if _database_dialect() == "postgresql":
             connection.execute(text("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_uuid_key"))
         connection.execute(text("DROP INDEX IF EXISTS ix_invoices_uuid_unique"))
+        connection.execute(text("DROP INDEX IF EXISTS ix_invoices_uuid"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_uuid ON invoices(uuid)"))
         connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_user_id ON invoices(user_id)"))
         connection.execute(
@@ -86,6 +87,32 @@ def _ensure_invoice_indexes() -> None:
                 "ON invoices(user_id, uuid)"
             )
         )
+
+
+def _ensure_invoice_user_ownership_constraints() -> None:
+    if _database_dialect() != "postgresql":
+        return
+
+    with engine.begin() as connection:
+        existing = {
+            row[0]
+            for row in connection.execute(
+                text(
+                    "SELECT constraint_name "
+                    "FROM information_schema.table_constraints "
+                    "WHERE table_name = 'invoices'"
+                )
+            ).fetchall()
+        }
+        if "invoices_user_id_fkey" not in existing:
+            connection.execute(
+                text(
+                    "ALTER TABLE invoices "
+                    "ADD CONSTRAINT invoices_user_id_fkey "
+                    "FOREIGN KEY (user_id) REFERENCES users(id)"
+                )
+            )
+        connection.execute(text("ALTER TABLE invoices ALTER COLUMN user_id SET NOT NULL"))
 
 
 def _ensure_invoice_columns() -> None:
@@ -162,6 +189,7 @@ def ensure_db_initialized() -> None:
         _ensure_user_columns()
         _ensure_invoice_columns()
         _backfill_invoice_user_id()
+        _ensure_invoice_user_ownership_constraints()
         _ensure_invoice_indexes()
         _initialized = True
         logger.info("Database schema ready")

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     enable_beta_mode: bool = Field(default=False, alias="ENABLE_BETA_MODE")
     beta_access_code: str = Field(default="", alias="BETA_ACCESS_CODE")
     beta_allowed_emails_raw: str = Field(default="", alias="BETA_ALLOWED_EMAILS")
+    admin_maintenance_token: str = Field(default="", alias="ADMIN_MAINTENANCE_TOKEN")
     demo_mode: bool = Field(default=False, alias="DEMO_MODE")
     allow_real_xml_upload: bool = Field(default=True, alias="ALLOW_REAL_XML_UPLOAD")
     auth_rate_limit_window_seconds: int = Field(default=900, alias="AUTH_RATE_LIMIT_WINDOW_SECONDS")

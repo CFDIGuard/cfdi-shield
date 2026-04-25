@@ -53,6 +53,20 @@ def _format_upload_detail(filename: str, stage: str, reason: str) -> str:
     return f"{safe_name} | {safe_stage} | {safe_reason}"
 
 
+def _is_duplicate_integrity_error(exc: IntegrityError) -> bool:
+    message = str(exc).lower()
+    duplicate_markers = (
+        "duplicate key",
+        "unique constraint",
+        "unique failed",
+        "already exists",
+        "ix_invoices_user_uuid_unique",
+        "invoices_uuid_key",
+        "invoices.uuid",
+    )
+    return any(marker in message for marker in duplicate_markers)
+
+
 def _sat_mode_view(current_user: User) -> tuple[bool, str]:
     if settings.local_mode:
         return False, "Desactivado por LOCAL_MODE. Las nuevas cargas usaran estado local."
@@ -234,16 +248,25 @@ def upload_xml_web(
             invalidas += 1
             logger.warning("Invalid XML upload during processing: %s", exc)
             detail_lines.append(_format_upload_detail(filename, "parse_xml", str(exc)))
-        except IntegrityError:
+        except IntegrityError as exc:
             db.rollback()
             duplicadas += 1
-            detail_lines.append(
-                _format_upload_detail(
-                    filename,
-                    "database_insert",
-                    "Conflicto de base de datos al guardar la factura",
+            if _is_duplicate_integrity_error(exc):
+                detail_lines.append(
+                    _format_upload_detail(
+                        filename,
+                        "duplicate_check",
+                        "UUID ya existe para este usuario",
+                    )
                 )
-            )
+            else:
+                detail_lines.append(
+                    _format_upload_detail(
+                        filename,
+                        "database_insert",
+                        "Conflicto de base de datos al guardar la factura",
+                    )
+                )
         except Exception as exc:
             db.rollback()
             errores += 1
