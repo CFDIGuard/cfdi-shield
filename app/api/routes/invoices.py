@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_api_current_user, get_db
 from app.repositories.invoice_repository import InvoiceRepository
 from app.models.user import User
-from app.schemas.invoice import InvoiceResponse, InvoiceUploadResponse
+from app.schemas.invoice import InvoiceFilters, InvoiceResponse, InvoiceUploadResponse
 from app.services.invoice_processor import procesar_factura
 from app.services.risk_engine import build_risk_detail, calculate_risk_level, detect_invoice_risk_types
 from app.services.sat_validator import get_sat_validator
@@ -15,6 +15,28 @@ from app.services.xml_parser import parse_cfdi_xml
 
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
+
+
+def get_invoice_filters(
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+) -> InvoiceFilters:
+    return InvoiceFilters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
 
 
 @router.post(
@@ -77,9 +99,10 @@ def list_invoices(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_api_current_user),
+    filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> list[InvoiceResponse]:
     limit = min(limit, 500)
-    return InvoiceRepository(db, user_id=current_user.id).list(skip=skip, limit=limit)
+    return InvoiceRepository(db, user_id=current_user.id).list(skip=skip, limit=limit, filters=filters)
 
 
 @router.get("/by-uuid/{uuid}", response_model=InvoiceResponse)

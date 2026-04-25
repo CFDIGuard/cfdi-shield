@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import Numeric, cast, distinct, func, select
+from sqlalchemy import Numeric, String, cast, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.models.invoice import Invoice
 from app.models.sat_validation_cache import SatValidationCache
-from app.schemas.invoice import InvoiceCreate
+from app.schemas.invoice import InvoiceCreate, InvoiceFilters
 from app.services.reports_service import build_dashboard_summary, build_reports_bundle
 
 
@@ -20,6 +20,44 @@ class InvoiceRepository:
         if self.user_id is None:
             return statement
         return statement.where(Invoice.user_id == self.user_id)
+
+    def _apply_filters(self, statement, filters: InvoiceFilters | None):
+        if filters is None:
+            return statement
+
+        cleaned = filters.cleaned()
+        if not cleaned:
+            return statement
+
+        if cleaned.get("rfc_receptor"):
+            statement = statement.where(
+                func.upper(func.coalesce(Invoice.rfc_receptor, "")).like(f"%{cleaned['rfc_receptor'].upper()}%")
+            )
+        if cleaned.get("rfc_emisor"):
+            statement = statement.where(
+                func.upper(func.coalesce(Invoice.rfc_emisor, "")).like(f"%{cleaned['rfc_emisor'].upper()}%")
+            )
+        if cleaned.get("proveedor"):
+            statement = statement.where(
+                func.upper(func.coalesce(cast(Invoice.razon_social, String), "")).like(f"%{cleaned['proveedor'].upper()}%")
+            )
+        if cleaned.get("estatus_sat"):
+            statement = statement.where(
+                func.upper(func.coalesce(Invoice.estatus_sat, "")) == cleaned["estatus_sat"].upper()
+            )
+        if cleaned.get("riesgo"):
+            statement = statement.where(
+                func.upper(func.coalesce(Invoice.riesgo, "")) == cleaned["riesgo"].upper()
+            )
+        if cleaned.get("moneda"):
+            statement = statement.where(
+                func.upper(func.coalesce(Invoice.moneda_original, Invoice.moneda, "MXN")) == cleaned["moneda"].upper()
+            )
+        if cleaned.get("fecha_desde"):
+            statement = statement.where(func.coalesce(Invoice.fecha_emision, "") >= cleaned["fecha_desde"])
+        if cleaned.get("fecha_hasta"):
+            statement = statement.where(func.coalesce(Invoice.fecha_emision, "") <= f"{cleaned['fecha_hasta']}T23:59:59")
+        return statement
 
     def create(self, invoice_data: InvoiceCreate) -> Invoice:
         payload = invoice_data.model_dump()
@@ -64,15 +102,19 @@ class InvoiceRepository:
         self.db.flush()
         return cache_entry
 
-    def list(self, skip: int = 0, limit: int = 100) -> list[Invoice]:
-        statement = self._scope_invoice_statement(
-            select(Invoice).order_by(Invoice.created_at.desc())
-        ).offset(skip).limit(limit)
+    def list_filtered(self, filters: InvoiceFilters | None = None, skip: int = 0, limit: int | None = 100) -> list[Invoice]:
+        statement = self._scope_invoice_statement(select(Invoice))
+        statement = self._apply_filters(statement, filters)
+        statement = statement.order_by(Invoice.created_at.desc()).offset(skip)
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(self.db.execute(statement).scalars().all())
 
-    def list_all(self) -> list[Invoice]:
-        statement = self._scope_invoice_statement(select(Invoice).order_by(Invoice.created_at.desc()))
-        return list(self.db.execute(statement).scalars().all())
+    def list(self, skip: int = 0, limit: int = 100, filters: InvoiceFilters | None = None) -> list[Invoice]:
+        return self.list_filtered(filters=filters, skip=skip, limit=limit)
+
+    def list_all(self, filters: InvoiceFilters | None = None) -> list[Invoice]:
+        return self.list_filtered(filters=filters, skip=0, limit=None)
 
     def exists_same_rfc_total(self, rfc_emisor: str, total: float) -> bool:
         statement = self._scope_invoice_statement(select(func.count(Invoice.id))).where(
@@ -125,11 +167,11 @@ class InvoiceRepository:
         self.db.delete(invoice)
         self.db.commit()
 
-    def summary(self) -> dict[str, object]:
-        return build_dashboard_summary(self.list_all())
+    def summary(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
+        return build_dashboard_summary(self.list_all(filters=filters))
 
-    def reports(self) -> dict[str, object]:
-        return build_reports_bundle(self.list_all())
+    def reports(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
+        return build_reports_bundle(self.list_all(filters=filters))
 
     def unique_suppliers_count(self) -> int:
         statement = self._scope_invoice_statement(

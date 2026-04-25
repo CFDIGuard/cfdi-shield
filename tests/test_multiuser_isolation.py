@@ -80,6 +80,13 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         invoice_a_payload.detalle_riesgo = "CFDI cancelado"
         invoice_a = repo_a.create(invoice_a_payload)
 
+        invoice_a2_payload = _make_invoice(user_a.id, "AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA", 150.0, "Proveedor A2")
+        invoice_a2_payload.rfc_emisor = "CCC010101CCC"
+        invoice_a2_payload.estatus_sat = "VIGENTE"
+        invoice_a2_payload.riesgo = "BAJO"
+        invoice_a2_payload.detalle_riesgo = ""
+        repo_a.create(invoice_a2_payload)
+
         invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
         invoice_b_payload.estatus_sat = "SIN_VALIDACION"
         invoice_b_payload.riesgo = "MEDIO"
@@ -124,6 +131,35 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     rr9_values_b = "\n".join("" if cell is None else str(cell) for row in rr9_sheet_b.iter_rows(values_only=True) for cell in row)
     assert "Proveedor B" in rr9_values_b
     assert "Proveedor A" not in rr9_values_b
+
+    filtered_excel_a = client.get(
+        "/api/v1/dashboard/export-excel?rfc_emisor=AAA010101AAA&estatus_sat=CANCELADO",
+        cookies=cookie_a,
+    )
+    assert filtered_excel_a.status_code == 200
+    filtered_book_a = load_workbook(filename=BytesIO(filtered_excel_a.content))
+    filtered_control_a = filtered_book_a["CONTROL"]
+    filtered_values_a = "\n".join("" if cell is None else str(cell) for row in filtered_control_a.iter_rows(values_only=True) for cell in row)
+    assert "Proveedor A" in filtered_values_a
+    assert "Proveedor A2" not in filtered_values_a
+    assert "Proveedor B" not in filtered_values_a
+
+    rr1_filtered_page = client.get(
+        "/reports/rr1?rfc_emisor=AAA010101AAA&estatus_sat=CANCELADO",
+        cookies=cookie_a,
+    )
+    assert rr1_filtered_page.status_code == 200
+    assert "Proveedor A" in rr1_filtered_page.text
+    assert "Proveedor A2" not in rr1_filtered_page.text
+    assert "Proveedor B" not in rr1_filtered_page.text
+
+    rr9_filtered_page = client.get(
+        "/reports/rr9?rfc_emisor=BBB010101BBB&riesgo=MEDIO",
+        cookies=cookie_b,
+    )
+    assert rr9_filtered_page.status_code == 200
+    assert "Proveedor B" in rr9_filtered_page.text
+    assert "Proveedor A" not in rr9_filtered_page.text
 
     get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b.id}", cookies=cookie_a)
     assert get_b_as_a.status_code == 404

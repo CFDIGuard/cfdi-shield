@@ -51,3 +51,22 @@ class InvoiceUploadResponse(BaseModel):
 
 class InvoiceProcessedData(InvoiceBase):
     pass
+
+
+class InvoiceFilters(BaseModel):
+    rfc_receptor: str | None = None
+    rfc_emisor: str | None = None
+    proveedor: str | None = None
+    estatus_sat: str | None = None
+    riesgo: str | None = None
+    moneda: str | None = None
+    fecha_desde: str | None = None
+    fecha_hasta: str | None = None
+
+    def cleaned(self) -> dict[str, str]:
+        return {
+            key: str(value).strip()
+            for key, value in self.model_dump().items()
+            if value not in (None, "")
+            and str(value).strip()
+        }

@@ -244,6 +244,48 @@
         .alert.success { background: var(--success-soft); color: var(--success); }
         .alert.error { background: var(--danger-soft); color: var(--danger); }
 
+        .filters-panel {
+            margin-top: 14px;
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .field input,
+        .field select {
+            min-height: 40px;
+            padding: 9px 11px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            color: var(--ink);
+            font: inherit;
+        }
+
+        .filters-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .kpis {
             margin-top: 14px;
             display: grid;
@@ -553,7 +595,8 @@
             }
 
             .kpis,
-            .summary-grid {
+            .summary-grid,
+            .filters-grid {
                 grid-template-columns: 1fr;
             }
 
@@ -602,9 +645,73 @@
                 </nav>
             </div>
             <div class="toolbar">
-                <a class="logout-button" href="/api/v1/dashboard/export-excel">Exportar Excel</a>
+                <a class="logout-button" href="{{ export_excel_url }}">Exportar Excel</a>
                 <a class="button-link" href="/">Cargar XML</a>
             </div>
+        </section>
+
+        <section class="panel filters-panel" aria-label="Filtros avanzados">
+            <div>
+                <div class="panel-title">Filtros avanzados</div>
+                <div class="panel-copy">Aplica los mismos filtros sobre dashboard, RR1, RR9 y exportacion Excel.</div>
+            </div>
+            <form action="/dashboard-web" method="get">
+                <div class="filters-grid">
+                    <div class="field">
+                        <label for="rfc_receptor">RFC receptor</label>
+                        <input id="rfc_receptor" name="rfc_receptor" type="text" value="{{ filters.rfc_receptor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="rfc_emisor">RFC emisor</label>
+                        <input id="rfc_emisor" name="rfc_emisor" type="text" value="{{ filters.rfc_emisor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="proveedor">Proveedor</label>
+                        <input id="proveedor" name="proveedor" type="text" value="{{ filters.proveedor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="estatus_sat">Estatus SAT</label>
+                        <select id="estatus_sat" name="estatus_sat">
+                            <option value="">Todos</option>
+                            <option value="VIGENTE" {% if filters.estatus_sat == "VIGENTE" %}selected{% endif %}>VIGENTE</option>
+                            <option value="CANCELADO" {% if filters.estatus_sat == "CANCELADO" %}selected{% endif %}>CANCELADO</option>
+                            <option value="SIN_VALIDACION" {% if filters.estatus_sat == "SIN_VALIDACION" %}selected{% endif %}>SIN_VALIDACION</option>
+                            <option value="NO_ENCONTRADO" {% if filters.estatus_sat == "NO_ENCONTRADO" %}selected{% endif %}>NO_ENCONTRADO</option>
+                            <option value="ERROR" {% if filters.estatus_sat == "ERROR" %}selected{% endif %}>ERROR</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="riesgo">Nivel de riesgo</label>
+                        <select id="riesgo" name="riesgo">
+                            <option value="">Todos</option>
+                            <option value="BAJO" {% if filters.riesgo == "BAJO" %}selected{% endif %}>BAJO</option>
+                            <option value="MEDIO" {% if filters.riesgo == "MEDIO" %}selected{% endif %}>MEDIO</option>
+                            <option value="ALTO" {% if filters.riesgo == "ALTO" %}selected{% endif %}>ALTO</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="moneda">Moneda</label>
+                        <select id="moneda" name="moneda">
+                            <option value="">Todas</option>
+                            <option value="MXN" {% if filters.moneda == "MXN" %}selected{% endif %}>MXN</option>
+                            <option value="USD" {% if filters.moneda == "USD" %}selected{% endif %}>USD</option>
+                            <option value="EUR" {% if filters.moneda == "EUR" %}selected{% endif %}>EUR</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="fecha_desde">Fecha desde</label>
+                        <input id="fecha_desde" name="fecha_desde" type="date" value="{{ filters.fecha_desde or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="fecha_hasta">Fecha hasta</label>
+                        <input id="fecha_hasta" name="fecha_hasta" type="date" value="{{ filters.fecha_hasta or '' }}">
+                    </div>
+                </div>
+                <div class="filters-actions" style="margin-top: 12px;">
+                    <button class="button-link" type="submit">Aplicar filtros</button>
+                    <a class="logout-button" href="/dashboard-web">Limpiar filtros</a>
+                </div>
+            </form>
         </section>
 
         {% if message %}
@@ -921,10 +1028,10 @@
                             </article>
                         </div>
                         <div class="report-actions" style="margin-top: 12px;">
-                            <a class="logout-button" href="/reports/rr1">Ver RR1</a>
-                            <a class="logout-button" href="/api/v1/dashboard/export-rr1-excel">Exportar RR1</a>
-                            <a class="logout-button" href="/reports/rr9">Ver RR9</a>
-                            <a class="logout-button" href="/api/v1/dashboard/export-rr9-excel">Exportar RR9</a>
+                            <a class="logout-button" href="{{ rr1_url }}">Ver RR1</a>
+                            <a class="logout-button" href="{{ export_rr1_url }}">Exportar RR1</a>
+                            <a class="logout-button" href="{{ rr9_url }}">Ver RR9</a>
+                            <a class="logout-button" href="{{ export_rr9_url }}">Exportar RR9</a>
                         </div>
                         {% if reports.resumen_riesgos %}
                             <div class="table-wrap dashboard-scroll-section" style="margin-top: 12px;">

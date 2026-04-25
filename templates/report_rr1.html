@@ -324,7 +324,7 @@
                 <a href="/">Cargar</a>
                 <a class="active" href="/reports/rr1">Reporte RR1</a>
                 <a href="/reports/rr9">Reporte RR9</a>
-                <a href="/dashboard-web">Dashboard</a>
+                <a href="{{ dashboard_url }}">Dashboard</a>
             </nav>
             <div class="account">
                 <span class="user-pill">{{ current_user.username }}</span>
@@ -345,8 +345,8 @@
                 </div>
             </div>
             <div class="toolbar">
-                <a class="ghost-button" href="/dashboard-web">Volver al dashboard</a>
-                <a class="button-link" href="/api/v1/dashboard/export-rr1-excel">Exportar Excel</a>
+                <a class="ghost-button" href="{{ dashboard_url }}">Volver al dashboard</a>
+                <a class="button-link" href="{{ export_rr1_url }}">Exportar Excel</a>
             </div>
         </section>
 

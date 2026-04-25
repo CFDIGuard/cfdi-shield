@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -10,6 +11,7 @@ from app.db.session import get_db
 from app.models.user import User
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
+from app.schemas.invoice import InvoiceFilters
 from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
 from app.services.notification_service import smtp_ready_for_delivery
 from app.services.security_utils import mask_username, mask_uuid
@@ -21,6 +23,35 @@ from app.web_deps import get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["web"])
+
+
+def _build_invoice_filters(
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+) -> InvoiceFilters:
+    return InvoiceFilters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+
+
+def _query_suffix(filters: InvoiceFilters) -> str:
+    cleaned = filters.cleaned()
+    if not cleaned:
+        return ""
+    return f"?{urlencode(cleaned)}"
 
 
 def _collect_uploads(files: list[UploadFile] | None, file: UploadFile | None) -> list[UploadFile]:
@@ -289,16 +320,35 @@ def dashboard_web(
     message: str | None = None,
     error: str | None = None,
     details: str | None = None,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    query_suffix = _query_suffix(filters)
     repository = InvoiceRepository(db, user_id=current_user.id)
-    reports_bundle = repository.reports()
+    reports_bundle = repository.reports(filters=filters)
     summary = reports_bundle["summary"]
-    invoices = repository.list(limit=8)
+    invoices = repository.list(limit=8, filters=filters)
     sat_mode_effective, sat_mode_note = _sat_mode_view(current_user)
     two_factor_effective, two_factor_note, can_toggle_two_factor = _two_factor_view(current_user)
 
@@ -313,6 +363,7 @@ def dashboard_web(
             "error": error,
             "details": details,
             "current_user": current_user,
+            "filters": filters,
             "use_sat_validation": current_user.use_sat_validation,
             "sat_mode_effective": sat_mode_effective,
             "sat_mode_note": sat_mode_note,
@@ -321,6 +372,12 @@ def dashboard_web(
             "can_toggle_two_factor": can_toggle_two_factor,
             "demo_mode": settings.demo_mode,
             "allow_real_xml_upload": settings.allow_real_xml_upload,
+            "dashboard_url": f"/dashboard-web{query_suffix}",
+            "rr1_url": f"/reports/rr1{query_suffix}",
+            "rr9_url": f"/reports/rr9{query_suffix}",
+            "export_excel_url": f"/api/v1/dashboard/export-excel{query_suffix}",
+            "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
+            "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
         },
     )
 
@@ -328,14 +385,33 @@ def dashboard_web(
 @router.get("/reports/rr1", response_class=HTMLResponse, response_model=None)
 def report_rr1_web(
     request: Request,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    query_suffix = _query_suffix(filters)
     repository = InvoiceRepository(db, user_id=current_user.id)
-    reports_bundle = repository.reports()
+    reports_bundle = repository.reports(filters=filters)
     return templates.TemplateResponse(
         request,
         "report_rr1.html",
@@ -343,6 +419,8 @@ def report_rr1_web(
             "current_user": current_user,
             "rows": reports_bundle["reports"]["rr1"],
             "summary": reports_bundle["summary"],
+            "dashboard_url": f"/dashboard-web{query_suffix}",
+            "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
         },
     )
 
@@ -350,14 +428,33 @@ def report_rr1_web(
 @router.get("/reports/rr9", response_class=HTMLResponse, response_model=None)
 def report_rr9_web(
     request: Request,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    query_suffix = _query_suffix(filters)
     repository = InvoiceRepository(db, user_id=current_user.id)
-    reports_bundle = repository.reports()
+    reports_bundle = repository.reports(filters=filters)
     return templates.TemplateResponse(
         request,
         "report_rr9.html",
@@ -365,6 +462,8 @@ def report_rr9_web(
             "current_user": current_user,
             "rows": reports_bundle["reports"]["rr9"],
             "summary": reports_bundle["summary"],
+            "dashboard_url": f"/dashboard-web{query_suffix}",
+            "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
         },
     )
 
