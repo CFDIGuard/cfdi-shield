@@ -12,7 +12,7 @@ from app.services.invoice_maintenance_service import (
 )
 
 
-router = APIRouter(prefix="/admin/maintenance", tags=["maintenance"])
+router = APIRouter()
 
 
 def _require_maintenance_token(token: str | None) -> None:
