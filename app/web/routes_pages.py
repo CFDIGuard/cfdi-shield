@@ -325,6 +325,50 @@ def dashboard_web(
     )
 
 
+@router.get("/reports/rr1", response_class=HTMLResponse, response_model=None)
+def report_rr1_web(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    reports_bundle = repository.reports()
+    return templates.TemplateResponse(
+        request,
+        "report_rr1.html",
+        {
+            "current_user": current_user,
+            "rows": reports_bundle["reports"]["rr1"],
+            "summary": reports_bundle["summary"],
+        },
+    )
+
+
+@router.get("/reports/rr9", response_class=HTMLResponse, response_model=None)
+def report_rr9_web(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    reports_bundle = repository.reports()
+    return templates.TemplateResponse(
+        request,
+        "report_rr9.html",
+        {
+            "current_user": current_user,
+            "rows": reports_bundle["reports"]["rr9"],
+            "summary": reports_bundle["summary"],
+        },
+    )
+
+
 @router.post("/sat-validation/toggle", response_model=None)
 def toggle_sat_validation(
     current_user: User | None = Depends(get_current_user),
