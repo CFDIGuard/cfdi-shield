@@ -107,10 +107,15 @@ LOCAL_MODE=False
 ENABLE_SAT_VALIDATION=True
 ENABLE_REGISTRATION=True
 ENABLE_BETA_MODE=True
+DEMO_MODE=True
+ALLOW_REAL_XML_UPLOAD=False
 ENABLE_2FA=False
 BETA_ACCESS_CODE=tu-codigo-beta
 BETA_ALLOWED_EMAILS=correo1@dominio.com,correo2@dominio.com
 APP_SECRET_KEY=una-clave-larga-y-privada
+AUTH_RATE_LIMIT_WINDOW_SECONDS=900
+AUTH_RATE_LIMIT_IP_MAX_ATTEMPTS=10
+AUTH_RATE_LIMIT_USER_MAX_ATTEMPTS=5
 ```
 
 Opcionales:
@@ -159,7 +164,21 @@ Si quieres cerrar totalmente el registro:
 ENABLE_REGISTRATION=False
 ```
 
-## 13. Verificaciones despues del deploy
+## 13. Seguridad para demo publica
+
+- deja `ENABLE_BETA_MODE=True`
+- usa `BETA_ACCESS_CODE` o `BETA_ALLOWED_EMAILS`
+- para evitar carga real en la demo, usa:
+
+```env
+DEMO_MODE=True
+ALLOW_REAL_XML_UPLOAD=False
+```
+
+- la aplicacion no guarda el XML crudo de forma permanente; procesa el archivo en memoria y conserva solo los datos necesarios en base de datos
+- no subas CFDI reales o sensibles en una demo publica
+
+## 14. Verificaciones despues del deploy
 
 1. abre la URL publica de Render
 2. entra a `/login`
@@ -168,7 +187,7 @@ ENABLE_REGISTRATION=False
 5. valida dashboard
 6. valida exportacion Excel
 
-## 14. Notas operativas
+## 15. Notas operativas
 
 - para demo publica, usa una base PostgreSQL separada de produccion
 - no reutilices secretos del entorno local
@@ -189,3 +208,12 @@ ENABLE_SAT_VALIDATION=False
   - `ENABLE_BETA_MODE=True`
   - `ENABLE_REGISTRATION=True`
   - `BETA_ACCESS_CODE` configurado
+
+## 16. Recomendaciones para produccion
+
+- publicar detras de HTTPS
+- configurar backups de la base de datos
+- rotar secretos periodicamente
+- definir politica de retencion de datos
+- implementar borrado de datos por usuario cuando aplique
+- migrar 2FA por correo a TOTP para un entorno mas robusto

@@ -75,6 +75,15 @@ def _safe_upper(value: str | None) -> str:
     return str(value or "").strip().upper()
 
 
+def _safe_float(value: str | None) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_month(fecha_emision: str | None) -> str | None:
     if not fecha_emision:
         return None
@@ -113,6 +122,8 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
     subtotal = _float_value(root.attrib.get("SubTotal"))
     total = _float_value(root.attrib.get("Total"))
     fecha_emision = root.attrib.get("Fecha")
+    moneda_original = _safe_upper(root.attrib.get("Moneda")) or "MXN"
+    tipo_cambio_xml = _safe_float(root.attrib.get("TipoCambio"))
 
     impuestos_root = _find_first(root, ["cfdi:Impuestos", "cfdi3:Impuestos"])
     iva_trasladado, iva_retenido, isr_retenido = _extract_tax_amounts(impuestos_root)
@@ -130,10 +141,13 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
         mes=_build_month(fecha_emision),
         subtotal=subtotal,
         total=total,
+        total_original=total,
         iva=iva_trasladado,
         iva_retenido=iva_retenido,
         isr_retenido=isr_retenido,
-        moneda=str(root.attrib.get("Moneda", "")).strip() or None,
+        moneda=moneda_original,
+        moneda_original=moneda_original,
+        tipo_cambio_xml=tipo_cambio_xml,
         metodo_pago=str(root.attrib.get("MetodoPago", "")).strip() or None,
     )
     _validate_required_fields(data)

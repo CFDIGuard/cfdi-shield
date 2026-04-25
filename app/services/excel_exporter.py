@@ -16,6 +16,7 @@ THIN_BORDER = Border(
     bottom=Side(style="thin", color="D0D7E2"),
 )
 MXN_FORMAT = '$#,##0.00'
+DECIMAL_FORMAT = '#,##0.00'
 PERCENT_FORMAT = '0.00%'
 
 
@@ -66,6 +67,7 @@ def generate_excel_report(reports_bundle: dict[str, object]) -> bytes:
         ["Vigentes", summary["vigentes"]],
         ["Canceladas", summary["canceladas"]],
         ["Proveedores unicos", summary["proveedores_unicos"]],
+        ["Sin validacion SAT", summary["sin_validacion_sat"]],
     ]
     _write_rows(ws_resumen, resumen_headers, resumen_rows)
     for cell in ws_resumen["B"][1:]:
@@ -73,13 +75,29 @@ def generate_excel_report(reports_bundle: dict[str, object]) -> bytes:
             cell.number_format = MXN_FORMAT
 
     ws_control = wb.create_sheet("CONTROL")
-    control_headers = ["UUID", "RFC emisor", "Nombre", "Monto", "IVA", "Estatus SAT", "Riesgo"]
+    control_headers = [
+        "UUID",
+        "RFC emisor",
+        "Nombre",
+        "Moneda original",
+        "Total original",
+        "Tipo de cambio usado",
+        "Fuente tipo de cambio",
+        "Total MXN",
+        "IVA",
+        "Estatus SAT",
+        "Riesgo",
+    ]
     control_rows = [
         [
             row.get("uuid"),
             row.get("rfc_emisor"),
             row.get("razon_social"),
-            row.get("total"),
+            row.get("moneda_original") or row.get("moneda"),
+            row.get("total_original"),
+            row.get("tipo_cambio_usado"),
+            row.get("fuente_tipo_cambio"),
+            row.get("total_mxn"),
             row.get("iva"),
             row.get("estatus_sat"),
             row.get("riesgo"),
@@ -87,14 +105,16 @@ def generate_excel_report(reports_bundle: dict[str, object]) -> bytes:
         for row in reports["control"]
     ]
     _write_rows(ws_control, control_headers, control_rows)
-    for cell in ws_control["D"][1:] + ws_control["E"][1:]:
+    for cell in ws_control["E"][1:]:
+        cell.number_format = DECIMAL_FORMAT
+    for cell in ws_control["H"][1:] + ws_control["I"][1:]:
         cell.number_format = MXN_FORMAT
 
     ws_proveedores = wb.create_sheet("PROVEEDORES")
     proveedores_headers = [
         "RFC",
         "Nombre",
-        "Total facturado",
+        "Total facturado MXN",
         "Facturas",
         "Canceladas",
         "% canceladas",
@@ -123,10 +143,13 @@ def generate_excel_report(reports_bundle: dict[str, object]) -> bytes:
         cell.number_format = PERCENT_FORMAT
 
     ws_riesgos = wb.create_sheet("RIESGOS")
-    riesgos_headers = ["UUID", "Tipo riesgo", "Nivel", "Detalle"]
+    riesgos_headers = ["UUID", "Moneda original", "Total original", "Total MXN", "Tipo riesgo", "Nivel", "Detalle"]
     riesgos_rows = [
         [
             row.get("uuid"),
+            row.get("moneda_original"),
+            row.get("total_original"),
+            row.get("total_mxn"),
             row.get("detalle_riesgo") or row.get("riesgo") or "-",
             row.get("riesgo"),
             row.get("detalle_riesgo") or "-",
@@ -134,6 +157,10 @@ def generate_excel_report(reports_bundle: dict[str, object]) -> bytes:
         for row in reports["riesgos"]
     ]
     _write_rows(ws_riesgos, riesgos_headers, riesgos_rows)
+    for cell in ws_riesgos["C"][1:]:
+        cell.number_format = DECIMAL_FORMAT
+    for cell in ws_riesgos["D"][1:]:
+        cell.number_format = MXN_FORMAT
 
     buffer = BytesIO()
     wb.save(buffer)

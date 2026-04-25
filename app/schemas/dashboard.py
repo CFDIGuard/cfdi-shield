@@ -18,6 +18,9 @@ class RiskSummary(BaseModel):
     rfc_emisor: str
     razon_social: str
     total: float
+    total_original: float
+    total_mxn: float | None = None
+    moneda_original: str
     estatus_sat: str
     riesgo: str
     detalle_riesgo: str | None = None
@@ -33,6 +36,7 @@ class MonthlySummary(BaseModel):
     iva_retenido: float
     isr_retenido: float
     total: float
+    total_mxn: float
     vigentes: int
     canceladas: int
     porcentaje_canceladas: float
@@ -53,6 +57,12 @@ class ControlRow(BaseModel):
     isr_retenido: float
     total: float
     moneda: str | None = None
+    moneda_original: str | None = None
+    total_original: float
+    tipo_cambio_usado: float | None = None
+    fuente_tipo_cambio: str | None = None
+    fecha_tipo_cambio: str | None = None
+    total_mxn: float | None = None
     metodo_pago: str | None = None
     estatus_sat: str
     riesgo: str

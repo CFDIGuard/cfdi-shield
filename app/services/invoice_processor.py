@@ -7,6 +7,8 @@ from app.core.config import settings
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.invoice import InvoiceCreate
 from app.services.duplicate_detector import has_same_rfc_total
+from app.services.exchange_rate_service import resolve_exchange_rate
+from app.services.security_utils import mask_uuid
 from app.services.risk_engine import (
     build_risk_detail,
     calculate_risk_level,
@@ -59,6 +61,12 @@ def procesar_factura(
         ) from exc
 
     provider_stats = repository.get_provider_stats(data.rfc_emisor)
+    exchange_rate_result = resolve_exchange_rate(
+        moneda_original=data.moneda_original or data.moneda,
+        total_original=data.total_original or data.total,
+        tipo_cambio_xml=data.tipo_cambio_xml,
+        fecha_emision=data.fecha_emision,
+    )
     sat_validation_enabled = settings.enable_sat_validation and not settings.local_mode
     if use_sat_validation is not None:
         sat_validation_enabled = sat_validation_enabled and use_sat_validation
@@ -98,7 +106,7 @@ def procesar_factura(
         logger.exception(
             "Invoice processing failed | stage=sat_validation | filename=%s | uuid=%s | error=%s",
             filename or "sin_nombre",
-            data.uuid if data is not None else None,
+            mask_uuid(data.uuid if data is not None else None),
             str(exc),
         )
         raise InvoiceProcessingError(
@@ -124,6 +132,13 @@ def procesar_factura(
                 "riesgo": calculate_risk_level(risk_types, sat_result.estatus, data.total),
                 "score_proveedor": calculate_risk_score(risk_types),
                 "detalle_riesgo": build_risk_detail(risk_types),
+                "moneda": exchange_rate_result.moneda_original,
+                "moneda_original": exchange_rate_result.moneda_original,
+                "total_original": data.total_original or data.total,
+                "tipo_cambio_usado": exchange_rate_result.tipo_cambio_usado,
+                "total_mxn": exchange_rate_result.total_mxn,
+                "fuente_tipo_cambio": exchange_rate_result.fuente_tipo_cambio,
+                "fecha_tipo_cambio": exchange_rate_result.fecha_tipo_cambio,
                 "sat_validado_at": (
                     datetime.utcfromtimestamp(sat_result.validated_at_epoch)
                     if sat_result.validated_at_epoch is not None
@@ -136,7 +151,7 @@ def procesar_factura(
         logger.exception(
             "Invoice processing failed | stage=unknown | filename=%s | uuid=%s | error=%s",
             filename or "sin_nombre",
-            data.uuid if data is not None else None,
+            mask_uuid(data.uuid if data is not None else None),
             str(exc),
         )
         raise InvoiceProcessingError(

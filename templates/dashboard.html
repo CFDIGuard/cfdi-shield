@@ -606,6 +606,14 @@
         {% if error %}
             <div class="alert error">Atencion. {{ error }}</div>
         {% endif %}
+        {% if demo_mode %}
+            <div class="alert error">
+                Demo publica: no subas CFDI reales o sensibles.
+                {% if not allow_real_xml_upload %}
+                    La carga de XML esta desactivada en este entorno.
+                {% endif %}
+            </div>
+        {% endif %}
         {% if details %}
             <div class="alert error">
                 <div>
@@ -617,9 +625,9 @@
 
         <section class="kpis" aria-label="Indicadores principales">
             <article class="kpi">
-                <div class="kpi-label">Total facturado</div>
+                <div class="kpi-label">Total facturado MXN</div>
                 <div class="kpi-value">${{ "{:,.2f}".format(summary.total_facturado) }}</div>
-                <div class="kpi-meta">Monto consolidado en CFDI Shield.</div>
+                <div class="kpi-meta">Monto consolidado convertido a MXN.</div>
             </article>
             <article class="kpi">
                 <div class="kpi-label">Facturas</div>
@@ -712,7 +720,10 @@
                                         <th>UUID</th>
                                         <th>Proveedor</th>
                                         <th>Fecha</th>
-                                        <th>Total</th>
+                                        <th>Moneda</th>
+                                        <th>Total original</th>
+                                        <th>TC</th>
+                                        <th>Total MXN</th>
                                         <th>IVA</th>
                                         <th>SAT</th>
                                         <th>Riesgo</th>
@@ -728,7 +739,22 @@
                                                 <span>{{ invoice.rfc_emisor or "-" }}</span>
                                             </td>
                                             <td>{{ invoice.fecha_emision or "-" }}</td>
-                                            <td>${{ "{:,.2f}".format(invoice.total) }}</td>
+                                            <td>{{ invoice.moneda_original or invoice.moneda or "MXN" }}</td>
+                                            <td>{{ "{:,.2f}".format(invoice.total_original or invoice.total or 0) }}</td>
+                                            <td>
+                                                {% if invoice.tipo_cambio_usado is not none %}
+                                                    {{ "{:,.4f}".format(invoice.tipo_cambio_usado) }}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if invoice.total_mxn is not none %}
+                                                    ${{ "{:,.2f}".format(invoice.total_mxn) }}
+                                                {% else %}
+                                                    Pendiente
+                                                {% endif %}
+                                            </td>
                                             <td>${{ "{:,.2f}".format(invoice.iva) }}</td>
                                             <td>{{ invoice.estatus_sat }}</td>
                                             <td>
@@ -772,7 +798,7 @@
                                         <th>RFC</th>
                                         <th>Proveedor</th>
                                         <th>Facturas</th>
-                                        <th>Total</th>
+                                        <th>Total MXN</th>
                                         <th>Canceladas</th>
                                         <th>% Canceladas</th>
                                         <th>IVA</th>
@@ -903,7 +929,7 @@
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Resumen por periodo</div>
-                            <div class="panel-copy">Vista compacta del reporte RESUMEN integrado en la app.</div>
+                            <div class="panel-copy">Vista compacta del reporte RESUMEN integrado en la app con total convertido a MXN.</div>
                         </div>
                     </div>
                     {% if reports.resumen %}
@@ -913,7 +939,8 @@
                                     <tr>
                                         <th>Mes</th>
                                         <th>Facturas</th>
-                                        <th>Total</th>
+                                        <th>Total original</th>
+                                        <th>Total MXN</th>
                                         <th>Vigentes</th>
                                         <th>Canceladas</th>
                                     </tr>
@@ -923,7 +950,8 @@
                                         <tr>
                                             <td>{{ periodo.mes }}</td>
                                             <td>{{ periodo.facturas }}</td>
-                                            <td>${{ "{:,.2f}".format(periodo.total) }}</td>
+                                            <td>{{ "{:,.2f}".format(periodo.total) }}</td>
+                                            <td>${{ "{:,.2f}".format(periodo.total_mxn) }}</td>
                                             <td>{{ periodo.vigentes }}</td>
                                             <td>{{ periodo.canceladas }}</td>
                                         </tr>

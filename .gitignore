@@ -46,3 +46,6 @@ release/
 # Sistema
 .DS_Store
 Thumbs.db
+# Instalador (CRÍTICO)
+installer/Output/
+*.exe

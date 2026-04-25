@@ -487,6 +487,14 @@
                 {% if error %}
                     <div class="alert error">No se pudo completar la carga. {{ error }}</div>
                 {% endif %}
+                {% if demo_mode %}
+                    <div class="alert warning">
+                        No subas CFDI reales o sensibles en esta demo publica.
+                        {% if not allow_real_xml_upload %}
+                            La carga de XML esta desactivada en este entorno.
+                        {% endif %}
+                    </div>
+                {% endif %}
 
                 <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
                     <div class="field">
@@ -516,7 +524,9 @@
                     </div>
 
                     <div class="button-row">
-                        <button id="submit-button" class="button" type="submit">Procesar carga</button>
+                        <button id="submit-button" class="button" type="submit" {% if demo_mode and not allow_real_xml_upload %}disabled{% endif %}>
+                            {% if demo_mode and not allow_real_xml_upload %}Carga desactivada en demo{% else %}Procesar carga{% endif %}
+                        </button>
                         <a class="secondary-button" href="/dashboard-web">Ver dashboard</a>
                     </div>
                 </form>

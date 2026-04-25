@@ -14,10 +14,17 @@ class InvoiceBase(BaseModel):
     mes: str | None = None
     subtotal: float = 0
     total: float = 0
+    total_original: float = 0
     iva: float = 0
     iva_retenido: float = 0
     isr_retenido: float = 0
     moneda: str | None = None
+    moneda_original: str | None = None
+    tipo_cambio_xml: float | None = None
+    tipo_cambio_usado: float | None = None
+    total_mxn: float | None = None
+    fuente_tipo_cambio: str | None = None
+    fecha_tipo_cambio: str | None = None
     metodo_pago: str | None = None
     estatus_sat: str = "ERROR"
     riesgo: str = "BAJO"

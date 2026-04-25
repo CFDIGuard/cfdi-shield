@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.models.user import User
 from app.repositories.user_repository import UserRepository
+from app.services.rate_limit_service import clear_rate_limit, is_rate_limited, record_rate_limit_failure
+from app.services.security_utils import mask_username
 from app.services.auth_service import (
     create_password_reset_expiration,
     create_password_reset_token,
@@ -102,6 +104,13 @@ def _registration_error_for(username: str, access_code: str | None) -> str | Non
     return "El registro beta requiere un codigo de acceso valido o un correo autorizado."
 
 
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "").strip()
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.get("/login", response_class=HTMLResponse, response_model=None)
 def login_page(
     request: Request,
@@ -128,20 +137,32 @@ def login_page(
 
 @router.post("/login", response_model=None)
 def login(
+    request: Request,
     username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db),
 ):
     normalized_username = username.strip().lower()
+    client_ip = _client_ip(request)
+    if is_rate_limited("login", client_ip, normalized_username):
+        logger.warning("Rate limit reached for login username=%s ip=%s", mask_username(normalized_username), client_ip)
+        return RedirectResponse(
+            url=web_url("/login", error="Demasiados intentos. Espera unos minutos e intenta de nuevo."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     repository = UserRepository(db)
     user = repository.get_by_username(normalized_username)
 
     if user is None or not verify_password(password, user.password_hash) or not user.is_active:
-        logger.warning("Failed login attempt for username=%s", normalized_username)
+        record_rate_limit_failure("login", client_ip, normalized_username)
+        logger.warning("Failed login attempt for username=%s ip=%s", mask_username(normalized_username), client_ip)
         return RedirectResponse(
             url=web_url("/login", error="Usuario o contrasena incorrectos."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
+
+    clear_rate_limit("login", client_ip, normalized_username)
 
     if settings.enable_two_factor and user.two_factor_enabled:
         code = create_two_factor_code()
@@ -155,7 +176,7 @@ def login(
         if not delivered:
             if smtp_is_configured():
                 repository.clear_two_factor_code(user)
-                logger.warning("2FA delivery unavailable for username=%s", user.username)
+                logger.warning("2FA delivery unavailable for username=%s", mask_username(user.username))
                 return RedirectResponse(
                     url=web_url(
                         "/login",
@@ -165,7 +186,7 @@ def login(
                 )
             else:
                 repository.clear_two_factor_code(user)
-                logger.warning("2FA delivery unavailable for username=%s", user.username)
+                logger.warning("2FA delivery unavailable for username=%s", mask_username(user.username))
                 return RedirectResponse(
                     url=web_url(
                         "/login",
@@ -180,7 +201,7 @@ def login(
         )
         _clear_auth_cookies(response)
         _set_pending_two_factor_cookie(response, user.id)
-        logger.info("2FA challenge started for %s", user.username)
+        logger.info("2FA challenge started for %s", mask_username(user.username))
         return response
 
     response = RedirectResponse(
@@ -189,7 +210,7 @@ def login(
     )
     _clear_auth_cookies(response)
     _set_session_cookie(response, user.id)
-    logger.info("User logged in: %s", user.username)
+    logger.info("User logged in: %s", mask_username(user.username))
     return response
 
 
@@ -250,7 +271,7 @@ def verify_two_factor(
     )
     _clear_auth_cookies(response)
     _set_session_cookie(response, user.id)
-    logger.info("2FA verification completed for %s", user.username)
+    logger.info("2FA verification completed for %s", mask_username(user.username))
     return response
 
 
@@ -290,7 +311,7 @@ def forgot_password(
         delivered = send_password_reset_email(to_email=user.username, reset_token=raw_token)
         if not delivered:
             repository.clear_password_reset(user)
-            logger.warning("Password reset delivery unavailable for username=%s", user.username)
+            logger.warning("Password reset delivery unavailable for username=%s", mask_username(user.username))
 
     return RedirectResponse(
         url=web_url(
@@ -357,7 +378,7 @@ def reset_password(
         )
 
     repository.update_password(user, hash_password(password))
-    logger.info("Password reset completed for %s", user.username)
+    logger.info("Password reset completed for %s", mask_username(user.username))
     return RedirectResponse(
         url=web_url("/login", message="Contrasena actualizada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
@@ -393,6 +414,7 @@ def register_page(
 
 @router.post("/register", response_model=None)
 def register(
+    request: Request,
     username: str = Form(...),
     password: str = Form(...),
     password_confirm: str = Form(...),
@@ -400,23 +422,35 @@ def register(
     db: Session = Depends(get_db),
 ):
     normalized_username = username.strip().lower()
+    client_ip = _client_ip(request)
+    if is_rate_limited("register", client_ip, normalized_username):
+        logger.warning("Rate limit reached for register username=%s ip=%s", mask_username(normalized_username), client_ip)
+        return RedirectResponse(
+            url=web_url("/register", error="Demasiados intentos. Espera unos minutos e intenta de nuevo."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
     registration_error = _registration_error_for(normalized_username, access_code)
     if registration_error is not None:
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error=registration_error),
             status_code=status.HTTP_303_SEE_OTHER,
         )
     if len(normalized_username) < 3:
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error="El usuario debe tener al menos 3 caracteres."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
     if len(password) < 8:
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error="La contrasena debe tener al menos 8 caracteres."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
     if password != password_confirm:
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error="Las contrasenas no coinciden."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -424,6 +458,7 @@ def register(
 
     repository = UserRepository(db)
     if repository.get_by_username(normalized_username) is not None:
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error="Ese usuario ya existe."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -433,18 +468,20 @@ def register(
         user = repository.create(username=normalized_username, password_hash=hash_password(password))
     except IntegrityError:
         db.rollback()
+        record_rate_limit_failure("register", client_ip, normalized_username)
         return RedirectResponse(
             url=web_url("/register", error="Ese usuario ya existe."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
+    clear_rate_limit("register", client_ip, normalized_username)
     response = RedirectResponse(
         url=web_url("/dashboard-web", message="Cuenta creada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
     _clear_auth_cookies(response)
     _set_session_cookie(response, user.id)
-    logger.info("User registered: %s", user.username)
+    logger.info("User registered: %s", mask_username(user.username))
     return response
 
 @router.post("/two-factor/toggle", response_model=None)

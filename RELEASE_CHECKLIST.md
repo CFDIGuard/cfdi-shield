@@ -93,3 +93,43 @@ Usar esta lista para validar la salida de `FiscalGuard v1.0 RC` antes de entrega
 - [ ] documentacion comercial y operativa presente
 - [ ] `python -m compileall app` completado
 - [ ] release notes listos para compartir
+
+## 11. Validacion multicurrency
+
+### 11.1 CFDI MXN
+
+- [ ] cargar un CFDI en `MXN`
+- [ ] `moneda_original = MXN`
+- [ ] `tipo_cambio_usado = 1`
+- [ ] `fuente_tipo_cambio = MXN`
+- [ ] `total_mxn = total_original`
+
+### 11.2 CFDI USD con TipoCambio en XML
+
+- [ ] cargar un CFDI en `USD` con `TipoCambio`
+- [ ] `moneda_original = USD`
+- [ ] `tipo_cambio_usado = TipoCambio XML`
+- [ ] `fuente_tipo_cambio = XML`
+- [ ] `total_mxn = total_original * TipoCambio`
+
+### 11.3 CFDI USD sin TipoCambio
+
+Con `ENABLE_EXCHANGE_RATE_API=True`:
+
+- [ ] intenta consulta de tipo de cambio externa
+- [ ] `fuente_tipo_cambio = API` si responde
+- [ ] `total_mxn` calculado correctamente
+
+Si la API falla o `ENABLE_EXCHANGE_RATE_API=False`:
+
+- [ ] `fuente_tipo_cambio = PENDIENTE`
+- [ ] `total_mxn = null`
+- [ ] la factura se carga sin romper el flujo
+
+### 11.4 Salidas a validar
+
+- [ ] dashboard usa `total_mxn` en KPIs globales
+- [ ] `Ultimos CFDI` muestra moneda original, total original, tipo de cambio y total MXN
+- [ ] exportacion Excel incluye columnas multicurrency
+- [ ] validacion confirmada en PostgreSQL de Render
+- [ ] validacion confirmada en SQLite local

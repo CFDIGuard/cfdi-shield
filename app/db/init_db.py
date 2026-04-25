@@ -88,9 +88,16 @@ def _ensure_invoice_columns() -> None:
         "fecha_emision": _add_column_statement("invoices", "fecha_emision", "VARCHAR"),
         "mes": _add_column_statement("invoices", "mes", "VARCHAR"),
         "subtotal": _add_column_statement("invoices", "subtotal", "FLOAT", _float_default(0)),
+        "total_original": _add_column_statement("invoices", "total_original", "FLOAT", _float_default(0)),
         "iva_retenido": _add_column_statement("invoices", "iva_retenido", "FLOAT", _float_default(0)),
         "isr_retenido": _add_column_statement("invoices", "isr_retenido", "FLOAT", _float_default(0)),
         "moneda": _add_column_statement("invoices", "moneda", "VARCHAR"),
+        "moneda_original": _add_column_statement("invoices", "moneda_original", "VARCHAR"),
+        "tipo_cambio_xml": _add_column_statement("invoices", "tipo_cambio_xml", "FLOAT"),
+        "tipo_cambio_usado": _add_column_statement("invoices", "tipo_cambio_usado", "FLOAT"),
+        "total_mxn": _add_column_statement("invoices", "total_mxn", "FLOAT"),
+        "fuente_tipo_cambio": _add_column_statement("invoices", "fuente_tipo_cambio", "VARCHAR"),
+        "fecha_tipo_cambio": _add_column_statement("invoices", "fecha_tipo_cambio", "VARCHAR"),
         "metodo_pago": _add_column_statement("invoices", "metodo_pago", "VARCHAR"),
         "score_proveedor": _add_column_statement(
             "invoices", "score_proveedor", "FLOAT", _float_default(0)

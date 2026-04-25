@@ -14,10 +14,18 @@ class Settings(BaseSettings):
     enable_beta_mode: bool = Field(default=False, alias="ENABLE_BETA_MODE")
     beta_access_code: str = Field(default="", alias="BETA_ACCESS_CODE")
     beta_allowed_emails_raw: str = Field(default="", alias="BETA_ALLOWED_EMAILS")
+    demo_mode: bool = Field(default=False, alias="DEMO_MODE")
+    allow_real_xml_upload: bool = Field(default=True, alias="ALLOW_REAL_XML_UPLOAD")
+    auth_rate_limit_window_seconds: int = Field(default=900, alias="AUTH_RATE_LIMIT_WINDOW_SECONDS")
+    auth_rate_limit_ip_max_attempts: int = Field(default=10, alias="AUTH_RATE_LIMIT_IP_MAX_ATTEMPTS")
+    auth_rate_limit_user_max_attempts: int = Field(default=5, alias="AUTH_RATE_LIMIT_USER_MAX_ATTEMPTS")
     sat_service_url: str = "https://consultaqr.facturaelectronica.sat.gob.mx/ConsultaCFDIService.svc"
     sat_timeout_seconds: int = Field(default=10, alias="SAT_TIMEOUT_SECONDS")
     enable_sat_validation: bool = Field(default=True, alias="ENABLE_SAT_VALIDATION")
     sat_cache_ttl_seconds: int = Field(default=21600, alias="SAT_CACHE_TTL_SECONDS")
+    enable_exchange_rate_api: bool = Field(default=True, alias="ENABLE_EXCHANGE_RATE_API")
+    exchange_rate_api_url: str = Field(default="https://api.frankfurter.dev", alias="EXCHANGE_RATE_API_URL")
+    exchange_rate_timeout_seconds: int = Field(default=5, alias="EXCHANGE_RATE_TIMEOUT_SECONDS")
     session_secret_key: str = Field(default="", alias="APP_SECRET_KEY")
     session_cookie_name: str = "facturas_session"
     session_max_age_seconds: int = 604800

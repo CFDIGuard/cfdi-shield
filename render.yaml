@@ -4,11 +4,14 @@ services:
     env: docker
     plan: free
     autoDeploy: false
+    healthCheckPath: /health
     envVars:
       - key: APP_NAME
         value: CFDI Shield
       - key: APP_VERSION
         value: "1.0"
+      - key: BASE_URL
+        sync: false
       - key: LOCAL_MODE
         value: "False"
       - key: ENABLE_SAT_VALIDATION
@@ -19,7 +22,11 @@ services:
         value: "True"
       - key: ENABLE_BETA_MODE
         value: "True"
+      - key: ENABLE_2FA
+        value: "False"
       - key: BETA_ACCESS_CODE
+        sync: false
+      - key: BETA_ALLOWED_EMAILS
         sync: false
       - key: APP_SECRET_KEY
         generateValue: true

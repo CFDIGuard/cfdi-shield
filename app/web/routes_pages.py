@@ -12,6 +12,7 @@ from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
 from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
 from app.services.notification_service import smtp_ready_for_delivery
+from app.services.security_utils import mask_username, mask_uuid
 from app.templates import templates
 from app.services.xml_parser import parse_cfdi_xml
 from app.web.utils import web_url
@@ -91,6 +92,8 @@ def index(
             "message": message,
             "error": error,
             "current_user": current_user,
+            "demo_mode": settings.demo_mode,
+            "allow_real_xml_upload": settings.allow_real_xml_upload,
         },
     )
 
@@ -126,6 +129,15 @@ def upload_xml_web(
             url=web_url(
                 "/",
                 error=f"Solo puedes subir hasta {settings.max_files_per_upload} archivos por carga.",
+            ),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if settings.demo_mode and not settings.allow_real_xml_upload:
+        return RedirectResponse(
+            url=web_url(
+                "/",
+                error="La carga de CFDI esta desactivada en esta demo publica.",
             ),
             status_code=status.HTTP_303_SEE_OTHER,
         )
@@ -283,6 +295,8 @@ def dashboard_web(
             "two_factor_effective": two_factor_effective,
             "two_factor_note": two_factor_note,
             "can_toggle_two_factor": can_toggle_two_factor,
+            "demo_mode": settings.demo_mode,
+            "allow_real_xml_upload": settings.allow_real_xml_upload,
         },
     )
 
@@ -326,9 +340,9 @@ def delete_invoice(
 
     logger.info(
         "Invoice deleted by user=%s invoice_id=%s uuid=%s",
-        current_user.username,
+        mask_username(current_user.username),
         invoice.id,
-        f"...{invoice.uuid[-8:]}" if invoice.uuid else "",
+        mask_uuid(invoice.uuid),
     )
     repository.delete(invoice)
     return RedirectResponse(

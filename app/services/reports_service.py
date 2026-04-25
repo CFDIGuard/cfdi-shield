@@ -11,6 +11,15 @@ def _normalized_text(value: str | None, fallback: str = "-") -> str:
     return text or fallback
 
 
+def _mxn_amount(invoice: Invoice) -> float:
+    if invoice.total_mxn is not None:
+        return float(invoice.total_mxn or 0)
+    currency = str(invoice.moneda_original or invoice.moneda or "MXN").upper()
+    if currency == "MXN":
+        return float(invoice.total_original or invoice.total or 0)
+    return 0.0
+
+
 def _build_provider_report(invoices: list[Invoice]) -> list[dict[str, object]]:
     grouped: dict[str, dict[str, object]] = defaultdict(
         lambda: {
@@ -39,7 +48,7 @@ def _build_provider_report(invoices: list[Invoice]) -> list[dict[str, object]]:
         provider["rfc_emisor"] = invoice.rfc_emisor
         provider["razon_social"] = _normalized_text(invoice.razon_social)
         provider["facturas"] += 1
-        provider["total_facturado"] += float(invoice.total or 0)
+        provider["total_facturado"] += _mxn_amount(invoice)
         provider["canceladas"] += 1 if str(invoice.estatus_sat or "").upper() == "CANCELADO" else 0
         provider["iva_total"] += float(invoice.iva or 0)
 
@@ -89,6 +98,9 @@ def _build_risk_report(invoices: list[Invoice]) -> list[dict[str, object]]:
             "rfc_emisor": _normalized_text(invoice.rfc_emisor),
             "razon_social": _normalized_text(invoice.razon_social),
             "total": float(invoice.total or 0),
+            "total_original": float(invoice.total_original or invoice.total or 0),
+            "total_mxn": invoice.total_mxn if invoice.total_mxn is not None else None,
+            "moneda_original": _normalized_text(invoice.moneda_original or invoice.moneda),
             "estatus_sat": str(invoice.estatus_sat or "").upper(),
             "riesgo": str(invoice.riesgo or "").upper() or "BAJO",
             "detalle_riesgo": invoice.detalle_riesgo,
@@ -117,6 +129,12 @@ def _build_control_report(invoices: list[Invoice]) -> list[dict[str, object]]:
             "isr_retenido": float(invoice.isr_retenido or 0),
             "total": float(invoice.total or 0),
             "moneda": invoice.moneda,
+            "moneda_original": invoice.moneda_original or invoice.moneda,
+            "total_original": float(invoice.total_original or invoice.total or 0),
+            "tipo_cambio_usado": invoice.tipo_cambio_usado,
+            "fuente_tipo_cambio": invoice.fuente_tipo_cambio,
+            "fecha_tipo_cambio": invoice.fecha_tipo_cambio,
+            "total_mxn": invoice.total_mxn,
             "metodo_pago": invoice.metodo_pago,
             "estatus_sat": invoice.estatus_sat,
             "riesgo": invoice.riesgo,
@@ -139,6 +157,7 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
             "iva_retenido": 0.0,
             "isr_retenido": 0.0,
             "total": 0.0,
+            "total_mxn": 0.0,
             "vigentes": 0,
             "canceladas": 0,
         }
@@ -154,6 +173,7 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
         bucket["iva_retenido"] += float(invoice.iva_retenido or 0)
         bucket["isr_retenido"] += float(invoice.isr_retenido or 0)
         bucket["total"] += float(invoice.total or 0)
+        bucket["total_mxn"] += _mxn_amount(invoice)
         estatus = str(invoice.estatus_sat or "").upper()
         bucket["vigentes"] += 1 if estatus == "VIGENTE" else 0
         bucket["canceladas"] += 1 if estatus == "CANCELADO" else 0
@@ -171,6 +191,7 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
                 "iva_retenido": round(float(bucket["iva_retenido"]), 2),
                 "isr_retenido": round(float(bucket["isr_retenido"]), 2),
                 "total": round(float(bucket["total"]), 2),
+                "total_mxn": round(float(bucket["total_mxn"]), 2),
                 "vigentes": int(bucket["vigentes"]),
                 "canceladas": canceladas,
                 "porcentaje_canceladas": round((canceladas / facturas * 100) if facturas else 0.0, 2),
@@ -187,7 +208,7 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
     proveedores = _build_provider_report(invoices)
     riesgos = _build_risk_report(invoices)
 
-    total_facturado = float(sum(invoice.total or 0 for invoice in invoices))
+    total_facturado = float(sum(_mxn_amount(invoice) for invoice in invoices))
     total_iva = float(sum(invoice.iva or 0 for invoice in invoices))
     facturas = len(invoices)
     vigentes = sum(1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "VIGENTE")
