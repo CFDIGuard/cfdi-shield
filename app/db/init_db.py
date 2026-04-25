@@ -124,9 +124,18 @@ def _ensure_invoice_columns() -> None:
         "fecha_emision": _add_column_statement("invoices", "fecha_emision", "VARCHAR"),
         "mes": _add_column_statement("invoices", "mes", "VARCHAR"),
         "subtotal": _add_column_statement("invoices", "subtotal", "FLOAT", _float_default(0)),
+        "descuento": _add_column_statement("invoices", "descuento", "FLOAT", _float_default(0)),
         "total_original": _add_column_statement("invoices", "total_original", "FLOAT", _float_default(0)),
+        "iva_trasladado": _add_column_statement("invoices", "iva_trasladado", "FLOAT", _float_default(0)),
         "iva_retenido": _add_column_statement("invoices", "iva_retenido", "FLOAT", _float_default(0)),
         "isr_retenido": _add_column_statement("invoices", "isr_retenido", "FLOAT", _float_default(0)),
+        "ieps_trasladado": _add_column_statement("invoices", "ieps_trasladado", "FLOAT", _float_default(0)),
+        "total_impuestos_trasladados": _add_column_statement(
+            "invoices", "total_impuestos_trasladados", "FLOAT", _float_default(0)
+        ),
+        "total_impuestos_retenidos": _add_column_statement(
+            "invoices", "total_impuestos_retenidos", "FLOAT", _float_default(0)
+        ),
         "moneda": _add_column_statement("invoices", "moneda", "VARCHAR"),
         "moneda_original": _add_column_statement("invoices", "moneda_original", "VARCHAR"),
         "tipo_cambio_xml": _add_column_statement("invoices", "tipo_cambio_xml", "FLOAT"),
@@ -144,6 +153,24 @@ def _ensure_invoice_columns() -> None:
 
     for column_name, statement in statements.items():
         _execute_add_column_if_missing("invoices", column_name, statement)
+
+    columns = _column_names("invoices")
+    if {"iva", "iva_trasladado"}.issubset(columns):
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "UPDATE invoices "
+                    "SET iva_trasladado = COALESCE(iva_trasladado, 0) + 0 "
+                    "WHERE iva_trasladado IS NULL"
+                )
+            )
+            connection.execute(
+                text(
+                    "UPDATE invoices "
+                    "SET iva_trasladado = iva "
+                    "WHERE COALESCE(iva_trasladado, 0) = 0 AND COALESCE(iva, 0) <> 0"
+                )
+            )
 
 
 def _first_user_id() -> int | None:

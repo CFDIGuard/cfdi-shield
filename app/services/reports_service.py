@@ -12,6 +12,10 @@ def _normalized_text(value: str | None, fallback: str = "-") -> str:
     return text or fallback
 
 
+def _iva_trasladado(invoice: Invoice) -> float:
+    return float(invoice.iva_trasladado or invoice.iva or 0)
+
+
 def _mxn_amount(invoice: Invoice) -> float:
     if invoice.total_mxn is not None:
         return float(invoice.total_mxn or 0)
@@ -51,7 +55,7 @@ def _build_provider_report(invoices: list[Invoice]) -> list[dict[str, object]]:
         provider["facturas"] += 1
         provider["total_facturado"] += _mxn_amount(invoice)
         provider["canceladas"] += 1 if str(invoice.estatus_sat or "").upper() == "CANCELADO" else 0
-        provider["iva_total"] += float(invoice.iva or 0)
+        provider["iva_total"] += _iva_trasladado(invoice)
 
         detail = str(invoice.detalle_riesgo or "").upper()
         if "MISMO RFC EMISOR Y MISMO MONTO" in detail or repeated_pairs[(invoice.rfc_emisor, round(invoice.total or 0, 2))] > 1:
@@ -125,9 +129,15 @@ def _build_control_report(invoices: list[Invoice]) -> list[dict[str, object]]:
             "fecha_emision": invoice.fecha_emision,
             "mes": invoice.mes,
             "subtotal": float(invoice.subtotal or 0),
+            "descuento": float(invoice.descuento or 0),
             "iva": float(invoice.iva or 0),
+            "iva_trasladado": _iva_trasladado(invoice),
             "iva_retenido": float(invoice.iva_retenido or 0),
             "isr_retenido": float(invoice.isr_retenido or 0),
+            "ieps_trasladado": float(invoice.ieps_trasladado or 0),
+            "total_impuestos_trasladados": float(invoice.total_impuestos_trasladados or 0),
+            "total_impuestos_retenidos": float(invoice.total_impuestos_retenidos or 0),
+            "total_impuestos": float(invoice.total_impuestos_trasladados or 0) + float(invoice.total_impuestos_retenidos or 0),
             "total": float(invoice.total or 0),
             "moneda": invoice.moneda,
             "moneda_original": invoice.moneda_original or invoice.moneda,
@@ -154,9 +164,13 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
             "mes": "SIN_MES",
             "facturas": 0,
             "subtotal": 0.0,
+            "descuento": 0.0,
             "iva_trasladado": 0.0,
             "iva_retenido": 0.0,
             "isr_retenido": 0.0,
+            "ieps_trasladado": 0.0,
+            "total_impuestos_trasladados": 0.0,
+            "total_impuestos_retenidos": 0.0,
             "total": 0.0,
             "total_mxn": 0.0,
             "vigentes": 0,
@@ -170,9 +184,17 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
         bucket["mes"] = mes
         bucket["facturas"] += 1
         bucket["subtotal"] += float(invoice.subtotal or 0)
-        bucket["iva_trasladado"] += float(invoice.iva or 0)
+        bucket["descuento"] = float(bucket.get("descuento", 0.0)) + float(invoice.descuento or 0)
+        bucket["iva_trasladado"] += _iva_trasladado(invoice)
         bucket["iva_retenido"] += float(invoice.iva_retenido or 0)
         bucket["isr_retenido"] += float(invoice.isr_retenido or 0)
+        bucket["ieps_trasladado"] = float(bucket.get("ieps_trasladado", 0.0)) + float(invoice.ieps_trasladado or 0)
+        bucket["total_impuestos_trasladados"] = float(bucket.get("total_impuestos_trasladados", 0.0)) + float(
+            invoice.total_impuestos_trasladados or 0
+        )
+        bucket["total_impuestos_retenidos"] = float(bucket.get("total_impuestos_retenidos", 0.0)) + float(
+            invoice.total_impuestos_retenidos or 0
+        )
         bucket["total"] += float(invoice.total or 0)
         bucket["total_mxn"] += _mxn_amount(invoice)
         estatus = str(invoice.estatus_sat or "").upper()
@@ -188,9 +210,13 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
                 "mes": bucket["mes"],
                 "facturas": facturas,
                 "subtotal": round(float(bucket["subtotal"]), 2),
+                "descuento": round(float(bucket.get("descuento", 0.0)), 2),
                 "iva_trasladado": round(float(bucket["iva_trasladado"]), 2),
                 "iva_retenido": round(float(bucket["iva_retenido"]), 2),
                 "isr_retenido": round(float(bucket["isr_retenido"]), 2),
+                "ieps_trasladado": round(float(bucket.get("ieps_trasladado", 0.0)), 2),
+                "total_impuestos_trasladados": round(float(bucket.get("total_impuestos_trasladados", 0.0)), 2),
+                "total_impuestos_retenidos": round(float(bucket.get("total_impuestos_retenidos", 0.0)), 2),
                 "total": round(float(bucket["total"]), 2),
                 "total_mxn": round(float(bucket["total_mxn"]), 2),
                 "vigentes": int(bucket["vigentes"]),
@@ -211,7 +237,10 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
     fiscal_risk_reports = build_fiscal_risk_reports(invoices)
 
     total_facturado = float(sum(_mxn_amount(invoice) for invoice in invoices))
-    total_iva = float(sum(invoice.iva or 0 for invoice in invoices))
+    total_iva = float(sum(_iva_trasladado(invoice) for invoice in invoices))
+    total_iva_retenido = float(sum(invoice.iva_retenido or 0 for invoice in invoices))
+    total_isr_retenido = float(sum(invoice.isr_retenido or 0 for invoice in invoices))
+    total_impuestos_netos = float(sum((invoice.total_impuestos_trasladados or 0) - (invoice.total_impuestos_retenidos or 0) for invoice in invoices))
     facturas = len(invoices)
     vigentes = sum(1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "VIGENTE")
     canceladas = sum(1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "CANCELADO")
@@ -231,6 +260,10 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
             "canceladas": canceladas,
             "sin_validacion_sat": sin_validacion_sat,
             "total_iva": round(total_iva, 2),
+            "total_iva_trasladado": round(total_iva, 2),
+            "total_iva_retenido": round(total_iva_retenido, 2),
+            "total_isr_retenido": round(total_isr_retenido, 2),
+            "total_impuestos_netos": round(total_impuestos_netos, 2),
             "proveedores_unicos": proveedores_unicos,
             "riesgos_altos": riesgo_alto,
             "riesgo_alto": riesgo_alto,

@@ -160,10 +160,21 @@ def generate_excel_report(reports_bundle: dict[str, object], report_mode: str = 
             ["Canceladas", summary["canceladas"]],
             ["Proveedores unicos", summary["proveedores_unicos"]],
             ["Sin validacion SAT", summary["sin_validacion_sat"]],
+            ["Total IVA trasladado", summary["total_iva_trasladado"]],
+            ["Total IVA retenido", summary["total_iva_retenido"]],
+            ["Total ISR retenido", summary["total_isr_retenido"]],
+            ["Total impuestos netos", summary["total_impuestos_netos"]],
+            ["Aviso", "Esto es extraccion y resumen, no calculo fiscal profesional"],
         ]
         _write_rows(ws_resumen, resumen_headers, resumen_rows)
         for cell in ws_resumen["B"][1:]:
-            if isinstance(cell.value, (int, float)) and ws_resumen[f"A{cell.row}"].value == "Total facturado":
+            if isinstance(cell.value, (int, float)) and ws_resumen[f"A{cell.row}"].value in {
+                "Total facturado",
+                "Total IVA trasladado",
+                "Total IVA retenido",
+                "Total ISR retenido",
+                "Total impuestos netos",
+            }:
                 cell.number_format = MXN_FORMAT
 
         ws_control = wb.create_sheet("CONTROL")
@@ -171,12 +182,18 @@ def generate_excel_report(reports_bundle: dict[str, object], report_mode: str = 
             "UUID",
             "RFC emisor",
             "Nombre",
+            "Subtotal",
+            "Descuento",
             "Moneda original",
             "Total original",
             "Tipo de cambio usado",
             "Fuente tipo de cambio",
             "Total MXN",
-            "IVA",
+            "IVA trasladado",
+            "IVA retenido",
+            "ISR retenido",
+            "IEPS",
+            "Total impuestos",
             "Estatus SAT",
             "Riesgo",
         ]
@@ -185,21 +202,36 @@ def generate_excel_report(reports_bundle: dict[str, object], report_mode: str = 
                 row.get("uuid"),
                 row.get("rfc_emisor"),
                 row.get("razon_social"),
+                row.get("subtotal"),
+                row.get("descuento"),
                 row.get("moneda_original") or row.get("moneda"),
                 row.get("total_original"),
                 row.get("tipo_cambio_usado"),
                 row.get("fuente_tipo_cambio"),
                 row.get("total_mxn"),
-                row.get("iva"),
+                row.get("iva_trasladado"),
+                row.get("iva_retenido"),
+                row.get("isr_retenido"),
+                row.get("ieps_trasladado"),
+                row.get("total_impuestos"),
                 row.get("estatus_sat"),
                 row.get("riesgo"),
             ]
             for row in reports["control"]
         ]
         _write_rows(ws_control, control_headers, control_rows)
-        for cell in ws_control["E"][1:]:
+        for cell in (
+            ws_control["D"][1:]
+            + ws_control["E"][1:]
+            + ws_control["G"][1:]
+            + ws_control["K"][1:]
+            + ws_control["L"][1:]
+            + ws_control["M"][1:]
+            + ws_control["N"][1:]
+            + ws_control["O"][1:]
+        ):
             cell.number_format = DECIMAL_FORMAT
-        for cell in ws_control["H"][1:] + ws_control["I"][1:]:
+        for cell in ws_control["J"][1:]:
             cell.number_format = MXN_FORMAT
 
         ws_proveedores = wb.create_sheet("PROVEEDORES")

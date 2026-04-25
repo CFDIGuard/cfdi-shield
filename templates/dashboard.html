@@ -838,7 +838,7 @@
                                         <th>Total original</th>
                                         <th>TC</th>
                                         <th>Total MXN</th>
-                                        <th>IVA</th>
+                                        <th>IVA trasladado</th>
                                         <th>SAT</th>
                                         <th>Riesgo</th>
                                         <th>Acciones</th>
@@ -869,7 +869,7 @@
                                                     Pendiente
                                                 {% endif %}
                                             </td>
-                                            <td>${{ "{:,.2f}".format(invoice.iva) }}</td>
+                                            <td>${{ "{:,.2f}".format(invoice.iva_trasladado or invoice.iva or 0) }}</td>
                                             <td>{{ invoice.estatus_sat }}</td>
                                             <td>
                                                 {% if invoice.riesgo == "ALTO" %}
@@ -965,8 +965,16 @@
                     <div class="panel-body">
                         <div class="summary-grid">
                             <article class="mini-metric">
-                                <span>Total IVA</span>
-                                <strong>${{ "{:,.2f}".format(summary.total_iva) }}</strong>
+                                <span>Total IVA trasladado</span>
+                                <strong>${{ "{:,.2f}".format(summary.total_iva_trasladado) }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Total IVA retenido</span>
+                                <strong>${{ "{:,.2f}".format(summary.total_iva_retenido) }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Total ISR retenido</span>
+                                <strong>${{ "{:,.2f}".format(summary.total_isr_retenido) }}</strong>
                             </article>
                             <article class="mini-metric">
                                 <span>Periodos</span>
@@ -976,7 +984,14 @@
                                 <span>Control</span>
                                 <strong>{{ reports.control | length }}</strong>
                             </article>
+                            <article class="mini-metric">
+                                <span>Impuestos netos</span>
+                                <strong>${{ "{:,.2f}".format(summary.total_impuestos_netos) }}</strong>
+                            </article>
                         </div>
+                        <p class="subtitle" style="margin-top: 12px; max-width: none;">
+                            Esto es extraccion y resumen, no calculo fiscal profesional.
+                        </p>
 
                         {% set total_riesgos = summary.riesgo_alto + summary.riesgo_medio + summary.riesgo_bajo %}
                         <div class="risk-bars">

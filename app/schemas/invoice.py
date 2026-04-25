@@ -13,11 +13,16 @@ class InvoiceBase(BaseModel):
     fecha_emision: str | None = None
     mes: str | None = None
     subtotal: float = 0
+    descuento: float = 0
     total: float = 0
     total_original: float = 0
     iva: float = 0
+    iva_trasladado: float = 0
     iva_retenido: float = 0
     isr_retenido: float = 0
+    ieps_trasladado: float = 0
+    total_impuestos_trasladados: float = 0
+    total_impuestos_retenidos: float = 0
     moneda: str | None = None
     moneda_original: str | None = None
     tipo_cambio_xml: float | None = None

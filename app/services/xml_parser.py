@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 
 from app.schemas.invoice import InvoiceProcessedData
 
@@ -34,13 +35,19 @@ def _findall_first(root: ET.Element, paths: list[str]) -> list[ET.Element]:
     return []
 
 
-def _extract_tax_amounts(impuestos: ET.Element | None, include_nested: bool = False) -> tuple[float, float, float]:
+def _extract_tax_amounts(
+    impuestos: ET.Element | None,
+    include_nested: bool = False,
+) -> tuple[Decimal, Decimal, Decimal, Decimal, Decimal, Decimal]:
     if impuestos is None:
-        return 0.0, 0.0, 0.0
+        zero = Decimal("0")
+        return zero, zero, zero, zero, zero, zero
 
-    iva_trasladado = 0.0
-    iva_retenido = 0.0
-    isr_retenido = 0.0
+    zero = Decimal("0")
+    iva_trasladado = zero
+    ieps_trasladado = zero
+    iva_retenido = zero
+    isr_retenido = zero
 
     traslado_paths = ["cfdi:Traslados/cfdi:Traslado", "cfdi3:Traslados/cfdi3:Traslado"]
     retencion_paths = ["cfdi:Retenciones/cfdi:Retencion", "cfdi3:Retenciones/cfdi3:Retencion"]
@@ -49,26 +56,50 @@ def _extract_tax_amounts(impuestos: ET.Element | None, include_nested: bool = Fa
         retencion_paths = [".//cfdi:Retencion", ".//cfdi3:Retencion"]
 
     for traslado in _findall_first(impuestos, traslado_paths):
-        if traslado.attrib.get("Impuesto") == "002":
-            iva_trasladado += _float_value(traslado.attrib.get("Importe"))
+        impuesto = traslado.attrib.get("Impuesto")
+        importe = _decimal_value(traslado.attrib.get("Importe"))
+        if impuesto == "002":
+            iva_trasladado += importe
+        elif impuesto == "003":
+            ieps_trasladado += importe
 
     for retencion in _findall_first(impuestos, retencion_paths):
         impuesto = retencion.attrib.get("Impuesto")
+        importe = _decimal_value(retencion.attrib.get("Importe"))
         if impuesto == "002":
-            iva_retenido += _float_value(retencion.attrib.get("Importe"))
+            iva_retenido += importe
         elif impuesto == "001":
-            isr_retenido += _float_value(retencion.attrib.get("Importe"))
+            isr_retenido += importe
 
-    return iva_trasladado, iva_retenido, isr_retenido
+    total_trasladados = _decimal_value(impuestos.attrib.get("TotalImpuestosTrasladados"))
+    total_retenidos = _decimal_value(impuestos.attrib.get("TotalImpuestosRetenidos"))
+
+    if total_trasladados == zero:
+        total_trasladados = iva_trasladado + ieps_trasladado
+    if total_retenidos == zero:
+        total_retenidos = iva_retenido + isr_retenido
+
+    return (
+        iva_trasladado,
+        ieps_trasladado,
+        iva_retenido,
+        isr_retenido,
+        total_trasladados,
+        total_retenidos,
+    )
 
 
 def _float_value(value: str | None) -> float:
+    return float(_decimal_value(value))
+
+
+def _decimal_value(value: str | None) -> Decimal:
     if value in (None, ""):
-        return 0.0
+        return Decimal("0")
     try:
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
+        return Decimal(str(value).strip())
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal("0")
 
 
 def _safe_upper(value: str | None) -> str:
@@ -119,16 +150,38 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
     if emisor is None or receptor is None or timbre is None:
         raise ValueError("XML sin Emisor, Receptor o TimbreFiscalDigital.")
 
-    subtotal = _float_value(root.attrib.get("SubTotal"))
-    total = _float_value(root.attrib.get("Total"))
+    subtotal = _decimal_value(root.attrib.get("SubTotal"))
+    descuento = _decimal_value(root.attrib.get("Descuento"))
+    total = _decimal_value(root.attrib.get("Total"))
     fecha_emision = root.attrib.get("Fecha")
     moneda_original = _safe_upper(root.attrib.get("Moneda")) or "MXN"
     tipo_cambio_xml = _safe_float(root.attrib.get("TipoCambio"))
 
     impuestos_root = _find_first(root, ["cfdi:Impuestos", "cfdi3:Impuestos"])
-    iva_trasladado, iva_retenido, isr_retenido = _extract_tax_amounts(impuestos_root)
-    if iva_trasladado == 0.0 and iva_retenido == 0.0 and isr_retenido == 0.0:
-        iva_trasladado, iva_retenido, isr_retenido = _extract_tax_amounts(impuestos_root, include_nested=True)
+    (
+        iva_trasladado,
+        ieps_trasladado,
+        iva_retenido,
+        isr_retenido,
+        total_impuestos_trasladados,
+        total_impuestos_retenidos,
+    ) = _extract_tax_amounts(impuestos_root)
+    if (
+        iva_trasladado == Decimal("0")
+        and ieps_trasladado == Decimal("0")
+        and iva_retenido == Decimal("0")
+        and isr_retenido == Decimal("0")
+        and total_impuestos_trasladados == Decimal("0")
+        and total_impuestos_retenidos == Decimal("0")
+    ):
+        (
+            iva_trasladado,
+            ieps_trasladado,
+            iva_retenido,
+            isr_retenido,
+            total_impuestos_trasladados,
+            total_impuestos_retenidos,
+        ) = _extract_tax_amounts(impuestos_root, include_nested=True)
 
     data = InvoiceProcessedData(
         archivo=filename,
@@ -139,12 +192,17 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
         folio=str(root.attrib.get("Folio", "")).strip() or None,
         fecha_emision=fecha_emision,
         mes=_build_month(fecha_emision),
-        subtotal=subtotal,
-        total=total,
-        total_original=total,
-        iva=iva_trasladado,
-        iva_retenido=iva_retenido,
-        isr_retenido=isr_retenido,
+        subtotal=float(subtotal),
+        descuento=float(descuento),
+        total=float(total),
+        total_original=float(total),
+        iva=float(iva_trasladado),
+        iva_trasladado=float(iva_trasladado),
+        iva_retenido=float(iva_retenido),
+        isr_retenido=float(isr_retenido),
+        ieps_trasladado=float(ieps_trasladado),
+        total_impuestos_trasladados=float(total_impuestos_trasladados),
+        total_impuestos_retenidos=float(total_impuestos_retenidos),
         moneda=moneda_original,
         moneda_original=moneda_original,
         tipo_cambio_xml=tipo_cambio_xml,

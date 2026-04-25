@@ -66,9 +66,13 @@ class MonthlySummary(BaseModel):
     mes: str
     facturas: int
     subtotal: float
+    descuento: float
     iva_trasladado: float
     iva_retenido: float
     isr_retenido: float
+    ieps_trasladado: float
+    total_impuestos_trasladados: float
+    total_impuestos_retenidos: float
     total: float
     total_mxn: float
     vigentes: int
@@ -86,9 +90,14 @@ class ControlRow(BaseModel):
     fecha_emision: str | None = None
     mes: str | None = None
     subtotal: float
+    descuento: float
     iva: float
+    iva_trasladado: float
     iva_retenido: float
     isr_retenido: float
+    ieps_trasladado: float
+    total_impuestos_trasladados: float
+    total_impuestos_retenidos: float
     total: float
     moneda: str | None = None
     moneda_original: str | None = None
@@ -112,6 +121,10 @@ class DashboardSummary(BaseModel):
     canceladas: int
     sin_validacion_sat: int
     total_iva: float
+    total_iva_trasladado: float
+    total_iva_retenido: float
+    total_isr_retenido: float
+    total_impuestos_netos: float
     proveedores_unicos: int
     riesgos_altos: int
     riesgo_alto: int

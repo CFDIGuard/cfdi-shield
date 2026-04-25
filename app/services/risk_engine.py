@@ -43,6 +43,7 @@ def detect_invoice_risk_types(
     high_amount_threshold: float = 100000.0,
 ) -> list[str]:
     risk_types: list[str] = []
+    iva_trasladado = float(getattr(invoice, "iva_trasladado", None) or getattr(invoice, "iva", 0) or 0)
 
     normalized_sat = str(estatus_sat or "").strip().upper()
     if normalized_sat == "CANCELADO":
@@ -57,14 +58,14 @@ def detect_invoice_risk_types(
     if has_same_rfc_total:
         risk_types.append("POTENCIAL_DUPLICADO_RFC_MONTO")
 
-    if invoice.subtotal <= 0 and invoice.iva > 0:
+    if invoice.subtotal <= 0 and iva_trasladado > 0:
         risk_types.append("IVA_INCONSISTENTE")
-    elif invoice.subtotal > 0 and invoice.iva > 0:
-        ratio = invoice.iva / invoice.subtotal
+    elif invoice.subtotal > 0 and iva_trasladado > 0:
+        ratio = iva_trasladado / invoice.subtotal
         if not any(abs(ratio - expected) <= 0.015 for expected in (0.16, 0.08, 0.0)):
             risk_types.append("IVA_INCONSISTENTE")
 
-    if invoice.iva > invoice.total:
+    if iva_trasladado > invoice.total:
         risk_types.append("IVA_INCONSISTENTE")
 
     if provider_invoice_count <= 2 and invoice.total >= max(high_amount_threshold, 100000.0):
