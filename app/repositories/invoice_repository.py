@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import Numeric, cast, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.models.invoice import Invoice
@@ -65,7 +65,7 @@ class InvoiceRepository:
     def exists_same_rfc_total(self, rfc_emisor: str, total: float) -> bool:
         statement = select(func.count(Invoice.id)).where(
             Invoice.rfc_emisor == rfc_emisor,
-            func.round(Invoice.total, 2) == round(total, 2),
+            func.round(cast(Invoice.total, Numeric), 2) == round(total, 2),
         )
         return bool(self.db.execute(statement).scalar_one())
 
