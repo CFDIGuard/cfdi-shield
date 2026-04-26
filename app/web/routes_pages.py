@@ -3,7 +3,7 @@ import math
 from io import BytesIO
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -1048,16 +1048,16 @@ def recalculate_payment_status_web(
 @router.post("/invoices/{invoice_id}/delete", response_model=None)
 def delete_invoice(
     invoice_id: int,
-    redirect_to: str | None = None,
-    page: int = 1,
-    rfc_receptor: str | None = None,
-    rfc_emisor: str | None = None,
-    proveedor: str | None = None,
-    estatus_sat: str | None = None,
-    riesgo: str | None = None,
-    moneda: str | None = None,
-    fecha_desde: str | None = None,
-    fecha_hasta: str | None = None,
+    redirect_to: str | None = Form(default=None),
+    page: int = Form(default=1),
+    rfc_receptor: str | None = Form(default=None),
+    rfc_emisor: str | None = Form(default=None),
+    proveedor: str | None = Form(default=None),
+    estatus_sat: str | None = Form(default=None),
+    riesgo: str | None = Form(default=None),
+    moneda: str | None = Form(default=None),
+    fecha_desde: str | None = Form(default=None),
+    fecha_hasta: str | None = Form(default=None),
     current_user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
