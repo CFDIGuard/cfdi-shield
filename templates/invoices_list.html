@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todas las facturas | CFDI Shield</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f4f6fb;
+            --surface: #ffffff;
+            --surface-soft: #f8fafc;
+            --text: #152033;
+            --muted: #667085;
+            --line: #d7deea;
+            --accent: #2f6fed;
+            --accent-soft: #eaf1ff;
+            --danger: #b42318;
+            --danger-soft: #fee4e2;
+            --success: #027a48;
+            --success-soft: #d1fadf;
+            --warning: #b54708;
+            --warning-soft: #fef0c7;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .shell {
+            max-width: 1480px;
+            margin: 0 auto;
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+        }
+
+        .topbar,
+        .hero,
+        .toolbar,
+        .panel-header,
+        .filters-grid,
+        .pagination,
+        .summary-row,
+        .inline-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .topbar,
+        .hero,
+        .panel,
+        .filters-panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 14px;
+        }
+
+        .topbar,
+        .hero,
+        .panel,
+        .filters-panel {
+            padding: 14px 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+        }
+
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 12px;
+        }
+
+        .nav {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .nav a,
+        .button-link,
+        .ghost-button,
+        .delete-button {
+            text-decoration: none;
+            border-radius: 10px;
+            border: 1px solid var(--line);
+            padding: 8px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .nav a.active,
+        .button-link {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .ghost-button {
+            background: transparent;
+        }
+
+        .delete-button {
+            border-color: #f1b5ae;
+            color: var(--danger);
+            background: #fff;
+        }
+
+        .hero {
+            display: grid;
+            gap: 8px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 26px;
+        }
+
+        .subtitle,
+        .panel-copy,
+        .muted {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .summary-row {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 4px 9px;
+            font-size: 11px;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .tag.info {
+            color: var(--accent);
+            background: var(--accent-soft);
+            border-color: #cddcff;
+        }
+
+        .tag.success {
+            color: var(--success);
+            background: var(--success-soft);
+            border-color: #a6f4c5;
+        }
+
+        .tag.warning {
+            color: var(--warning);
+            background: var(--warning-soft);
+            border-color: #fedf89;
+        }
+
+        .tag.high {
+            color: var(--danger);
+            background: var(--danger-soft);
+            border-color: #f7b4ad;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            align-items: end;
+        }
+
+        .field {
+            display: grid;
+            gap: 5px;
+        }
+
+        .field label {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 13px;
+            background: var(--surface);
+        }
+
+        .panel-title {
+            font-size: 17px;
+            font-weight: 800;
+        }
+
+        .table-wrap {
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: var(--surface);
+        }
+
+        table {
+            width: 100%;
+            min-width: 1320px;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 9px 10px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: top;
+            font-size: 13px;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background: var(--surface-soft);
+            z-index: 1;
+        }
+
+        .table-name strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .uuid {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+            font-size: 11px;
+        }
+
+        .inline-actions {
+            justify-content: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .pagination {
+            flex-wrap: wrap;
+        }
+
+        .alert {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--surface);
+            font-size: 13px;
+        }
+
+        .alert.success {
+            border-color: #a6f4c5;
+            background: #ecfdf3;
+        }
+
+        .alert.error {
+            border-color: #f7b4ad;
+            background: #fff1f0;
+        }
+
+        @media (max-width: 1080px) {
+            .filters-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 760px) {
+            .topbar,
+            .toolbar,
+            .panel-header,
+            .summary-row,
+            .pagination {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">FG</div>
+                <span>CFDI Shield</span>
+            </div>
+            <nav class="nav" aria-label="Navegacion principal">
+                <a href="/">Cargar</a>
+                <a href="/dashboard-web">Dashboard</a>
+                <a class="active" href="{{ all_invoices_url }}">Facturas</a>
+                <a href="/reconciliation">Conciliacion</a>
+            </nav>
+        </header>
+
+        <section class="hero">
+            <div class="toolbar">
+                <div>
+                    <h1>Todas las facturas</h1>
+                    <div class="subtitle">Vista completa paginada del inventario visible, con los mismos filtros del dashboard y accion directa de eliminacion.</div>
+                </div>
+                <a class="ghost-button" href="{{ dashboard_url }}">Volver al dashboard</a>
+            </div>
+            <div class="summary-row">
+                <span class="tag info">{{ total_items }} facturas visibles</span>
+                <span class="tag info">Pagina {{ page }} de {{ total_pages }}</span>
+                {% if total_items %}
+                    {% set start_index = ((page - 1) * page_size) + 1 %}
+                    {% set end_index = start_index + (invoices | length) - 1 %}
+                    <span class="muted">Mostrando {{ start_index }} a {{ end_index }} de {{ total_items }}</span>
+                {% else %}
+                    <span class="muted">No hay facturas visibles con los filtros actuales.</span>
+                {% endif %}
+            </div>
+        </section>
+
+        {% if message %}
+            <div class="alert success">{{ message }}</div>
+        {% endif %}
+        {% if error %}
+            <div class="alert error">{{ error }}</div>
+        {% endif %}
+
+        <section class="filters-panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Filtros</div>
+                    <div class="panel-copy">Se aplican al listado completo sin cambiar el comportamiento del dashboard.</div>
+                </div>
+            </div>
+            <form action="/invoices" method="get">
+                <div class="filters-grid">
+                    <div class="field">
+                        <label for="rfc_receptor">RFC receptor</label>
+                        <input id="rfc_receptor" name="rfc_receptor" type="text" value="{{ filters.rfc_receptor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="rfc_emisor">RFC emisor</label>
+                        <input id="rfc_emisor" name="rfc_emisor" type="text" value="{{ filters.rfc_emisor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="proveedor">Proveedor</label>
+                        <input id="proveedor" name="proveedor" type="text" value="{{ filters.proveedor or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="estatus_sat">Estatus SAT</label>
+                        <select id="estatus_sat" name="estatus_sat">
+                            <option value="">Todos</option>
+                            <option value="VIGENTE" {% if filters.estatus_sat == "VIGENTE" %}selected{% endif %}>VIGENTE</option>
+                            <option value="CANCELADO" {% if filters.estatus_sat == "CANCELADO" %}selected{% endif %}>CANCELADO</option>
+                            <option value="SIN_VALIDACION" {% if filters.estatus_sat == "SIN_VALIDACION" %}selected{% endif %}>SIN_VALIDACION</option>
+                            <option value="NO_ENCONTRADO" {% if filters.estatus_sat == "NO_ENCONTRADO" %}selected{% endif %}>NO_ENCONTRADO</option>
+                            <option value="ERROR" {% if filters.estatus_sat == "ERROR" %}selected{% endif %}>ERROR</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="riesgo">Nivel de riesgo</label>
+                        <select id="riesgo" name="riesgo">
+                            <option value="">Todos</option>
+                            <option value="BAJO" {% if filters.riesgo == "BAJO" %}selected{% endif %}>BAJO</option>
+                            <option value="MEDIO" {% if filters.riesgo == "MEDIO" %}selected{% endif %}>MEDIO</option>
+                            <option value="ALTO" {% if filters.riesgo == "ALTO" %}selected{% endif %}>ALTO</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="moneda">Moneda</label>
+                        <select id="moneda" name="moneda">
+                            <option value="">Todas</option>
+                            <option value="MXN" {% if filters.moneda == "MXN" %}selected{% endif %}>MXN</option>
+                            <option value="USD" {% if filters.moneda == "USD" %}selected{% endif %}>USD</option>
+                            <option value="EUR" {% if filters.moneda == "EUR" %}selected{% endif %}>EUR</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="fecha_desde">Fecha desde</label>
+                        <input id="fecha_desde" name="fecha_desde" type="date" value="{{ filters.fecha_desde or '' }}">
+                    </div>
+                    <div class="field">
+                        <label for="fecha_hasta">Fecha hasta</label>
+                        <input id="fecha_hasta" name="fecha_hasta" type="date" value="{{ filters.fecha_hasta or '' }}">
+                    </div>
+                </div>
+                <div class="inline-actions" style="margin-top: 10px;">
+                    <button class="button-link" type="submit">Aplicar filtros</button>
+                    <a class="ghost-button" href="/invoices">Limpiar filtros</a>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Inventario completo</div>
+                    <div class="panel-copy">Cada fila visible aqui puede eliminarse sin depender del recorte del dashboard.</div>
+                </div>
+                <div class="pagination">
+                    {% if prev_page_url %}
+                        <a class="ghost-button" href="{{ prev_page_url }}">Pagina anterior</a>
+                    {% endif %}
+                    {% if next_page_url %}
+                        <a class="ghost-button" href="{{ next_page_url }}">Pagina siguiente</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if invoices %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>UUID</th>
+                                <th>Proveedor</th>
+                                <th>Fecha</th>
+                                <th>Moneda</th>
+                                <th>Total original</th>
+                                <th>Total MXN</th>
+                                <th>Estado pago</th>
+                                <th>Total pagado</th>
+                                <th>Saldo pendiente</th>
+                                <th>SAT</th>
+                                <th>Riesgo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                                <tr>
+                                    <td class="uuid" title="{{ invoice.uuid }}">{{ invoice.uuid }}</td>
+                                    <td class="table-name">
+                                        <strong>{{ invoice.razon_social or "-" }}</strong>
+                                        <span class="muted">{{ invoice.rfc_emisor or "-" }}</span>
+                                    </td>
+                                    <td>{{ invoice.fecha_emision or "-" }}</td>
+                                    <td>{{ invoice.moneda_original or invoice.moneda or "MXN" }}</td>
+                                    <td>${{ "{:,.2f}".format(invoice.total_original or invoice.total or 0) }}</td>
+                                    <td>
+                                        {% if invoice.total_mxn is not none %}
+                                            ${{ "{:,.2f}".format(invoice.total_mxn) }}
+                                        {% else %}
+                                            Pendiente
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if invoice.estado_pago == "PAGADA" %}
+                                            <span class="tag success">PAGADA</span>
+                                        {% elif invoice.estado_pago == "PARCIAL" %}
+                                            <span class="tag warning">PARCIAL</span>
+                                        {% else %}
+                                            <span class="tag high">PENDIENTE</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ "{:,.2f}".format(invoice.total_pagado or 0) }}</td>
+                                    <td>${{ "{:,.2f}".format(invoice.saldo_pendiente or 0) }}</td>
+                                    <td>{{ invoice.estatus_sat }}</td>
+                                    <td>
+                                        {% if invoice.riesgo == "ALTO" %}
+                                            <span class="tag high">ALTO</span>
+                                        {% elif invoice.riesgo == "MEDIO" %}
+                                            <span class="tag warning">MEDIO</span>
+                                        {% else %}
+                                            <span class="tag success">BAJO</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                            <input type="hidden" name="redirect_to" value="invoices">
+                                            <input type="hidden" name="page" value="{{ page }}">
+                                            <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
+                                            <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
+                                            <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
+                                            <input type="hidden" name="estatus_sat" value="{{ filters.estatus_sat or '' }}">
+                                            <input type="hidden" name="riesgo" value="{{ filters.riesgo or '' }}">
+                                            <input type="hidden" name="moneda" value="{{ filters.moneda or '' }}">
+                                            <input type="hidden" name="fecha_desde" value="{{ filters.fecha_desde or '' }}">
+                                            <input type="hidden" name="fecha_hasta" value="{{ filters.fecha_hasta or '' }}">
+                                            <button class="delete-button" type="submit">Eliminar</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="muted">No hay facturas para mostrar con los filtros actuales.</div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

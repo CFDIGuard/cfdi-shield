@@ -1,4 +1,5 @@
 import logging
+import math
 from io import BytesIO
 from urllib.parse import urlencode
 
@@ -70,6 +71,16 @@ def _dashboard_redirect(filters: InvoiceFilters, **params: str) -> str:
     if not merged:
         return "/dashboard-web"
     return f"/dashboard-web?{urlencode(merged)}"
+
+
+def _invoice_list_redirect(filters: InvoiceFilters, page: int = 1, **params: str | int) -> str:
+    merged = filters.cleaned()
+    if page > 1:
+        merged["page"] = str(page)
+    merged.update({key: str(value) for key, value in params.items() if value is not None})
+    if not merged:
+        return "/invoices"
+    return f"/invoices?{urlencode(merged)}"
 
 
 def _invoice_option(invoice) -> dict[str, object]:
@@ -503,6 +514,7 @@ def dashboard_web(
             "demo_mode": settings.demo_mode,
             "allow_real_xml_upload": settings.allow_real_xml_upload,
             "dashboard_url": f"/dashboard-web{query_suffix}",
+            "all_invoices_url": _invoice_list_redirect(filters),
             "alertas_cfdi_url": f"/reports/alertas-cfdi{query_suffix}",
             "analisis_proveedor_url": f"/reports/analisis-proveedor{query_suffix}",
             "rr1_url": f"/reports/rr1{query_suffix}",
@@ -512,6 +524,67 @@ def dashboard_web(
             "export_analisis_proveedor_url": f"/api/v1/dashboard/export-analisis-proveedor-excel{query_suffix}",
             "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
             "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
+        },
+    )
+
+
+@router.get("/invoices", response_class=HTMLResponse, response_model=None)
+def invoices_web(
+    request: Request,
+    message: str | None = None,
+    error: str | None = None,
+    page: int = 1,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    page_size = 25
+    current_page = max(page, 1)
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    total_items = repository.count_filtered(filters=filters)
+    total_pages = max(1, math.ceil(total_items / page_size)) if total_items else 1
+    if current_page > total_pages:
+        current_page = total_pages
+    skip = (current_page - 1) * page_size
+    invoices = repository.list(skip=skip, limit=page_size, filters=filters)
+
+    return templates.TemplateResponse(
+        request,
+        "invoices_list.html",
+        {
+            "current_user": current_user,
+            "message": message,
+            "error": error,
+            "filters": filters,
+            "invoices": invoices,
+            "page": current_page,
+            "page_size": page_size,
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "dashboard_url": _dashboard_redirect(filters),
+            "all_invoices_url": _invoice_list_redirect(filters, current_page),
+            "prev_page_url": _invoice_list_redirect(filters, current_page - 1) if current_page > 1 else None,
+            "next_page_url": _invoice_list_redirect(filters, current_page + 1) if current_page < total_pages else None,
         },
     )
 
@@ -975,17 +1048,41 @@ def recalculate_payment_status_web(
 @router.post("/invoices/{invoice_id}/delete", response_model=None)
 def delete_invoice(
     invoice_id: int,
+    redirect_to: str | None = None,
+    page: int = 1,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
     current_user: User | None = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     if current_user is None:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    if redirect_to == "invoices":
+        redirect_builder = lambda **params: _invoice_list_redirect(filters, page=page, **params)
+    else:
+        redirect_builder = lambda **params: _dashboard_redirect(filters, **params)
     repository = InvoiceRepository(db, user_id=current_user.id)
     invoice = repository.get_by_id(invoice_id)
     if invoice is None:
         return RedirectResponse(
-            url=web_url("/dashboard-web", error="La factura ya no existe."),
+            url=redirect_builder(error="La factura ya no existe."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -1007,7 +1104,7 @@ def delete_invoice(
             str(exc),
         )
         return RedirectResponse(
-            url=web_url("/dashboard-web", error=str(exc)),
+            url=redirect_builder(error=str(exc)),
             status_code=status.HTTP_303_SEE_OTHER,
         )
     except Exception as exc:
@@ -1019,10 +1116,10 @@ def delete_invoice(
             mask_uuid(invoice.uuid),
         )
         return RedirectResponse(
-            url=web_url("/dashboard-web", error="No fue posible eliminar la factura en este momento."),
+            url=redirect_builder(error="No fue posible eliminar la factura en este momento."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
     return RedirectResponse(
-        url=web_url("/dashboard-web", message="Factura eliminada correctamente."),
+        url=redirect_builder(message="Factura eliminada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )

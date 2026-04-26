@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,6 +14,7 @@ class Invoice(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), index=True, nullable=True)
     uuid: Mapped[str] = mapped_column(String, index=True, nullable=False)
     archivo: Mapped[str | None] = mapped_column(String, default=None)
     tipo_comprobante: Mapped[str | None] = mapped_column(String, default=None)
@@ -50,4 +51,4 @@ class Invoice(Base):
     score_proveedor: Mapped[float] = mapped_column(Float, default=0)
     detalle_riesgo: Mapped[str | None] = mapped_column(Text, default=None)
     sat_validado_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

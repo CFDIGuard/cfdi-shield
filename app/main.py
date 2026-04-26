@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -52,6 +53,10 @@ def create_app() -> FastAPI:
             settings.enable_sat_validation,
             settings.port,
         )
+        logger.info("Effective DATABASE_URL=%s", settings.database_url)
+        logger.info("Current working directory=%s", os.getcwd())
+        if settings.sqlite_database_path is not None:
+            logger.info("SQLite database path=%s", settings.sqlite_database_path)
         if not settings.session_secret_key:
             logger.warning("APP_SECRET_KEY is not configured; using volatile runtime secret")
         log_smtp_configuration()

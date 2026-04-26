@@ -1165,10 +1165,13 @@
                 <section class="panel" id="ultimos-cfdi">
                     <div class="panel-header">
                         <div>
-                            <div class="panel-title">Ultimos CFDI</div>
-                            <div class="panel-copy">Revision rapida de monto, estatus SAT, riesgo y estado de pago real.</div>
+                            <div class="panel-title">Ultimos 8 CFDI</div>
+                            <div class="panel-copy">Revision rapida de los registros mas recientes. Los KPIs consideran todo el universo filtrado.</div>
                         </div>
-                        <span class="tag info">{{ invoices | length }} visibles</span>
+                        <div class="inline-actions">
+                            <span class="tag info">{{ invoices | length }} de {{ summary.facturas }} visibles</span>
+                            <a class="ghost-button" href="{{ all_invoices_url }}">Ver todas las facturas</a>
+                        </div>
                     </div>
 
                     {% if invoices %}
