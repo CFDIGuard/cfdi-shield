@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -32,6 +33,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _database_log_details() -> tuple[str, str]:
+    if settings.sqlite_database_path is not None:
+        return "sqlite", str(settings.sqlite_database_path)
+
+    parsed = urlparse(settings.database_url)
+    engine = parsed.scheme.split("+", 1)[0] if parsed.scheme else "unknown"
+    host = parsed.hostname or "unknown-host"
+    database = parsed.path.lstrip("/") or "unknown-db"
+    return engine, f"{host}/{database}"
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
@@ -55,6 +67,7 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def startup_log() -> None:
+        db_engine, db_target = _database_log_details()
         logger.info("Starting %s v%s", settings.app_name, settings.app_version)
         logger.info(
             "Runtime config debug=%s local_mode=%s sat_validation=%s port=%s",
@@ -63,12 +76,10 @@ def create_app() -> FastAPI:
             settings.enable_sat_validation,
             settings.port,
         )
-        logger.info("Effective DATABASE_URL=%s", settings.database_url)
+        logger.info("Database engine=%s target=%s", db_engine, db_target)
         logger.info("Current working directory=%s", os.getcwd())
         if settings.sqlite_database_path is not None:
             logger.info("SQLite database path=%s", settings.sqlite_database_path)
-        if not settings.session_secret_key:
-            logger.warning("APP_SECRET_KEY is not configured; using volatile runtime secret")
         log_smtp_configuration()
 
     @app.middleware("http")

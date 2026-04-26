@@ -13,8 +13,6 @@ TOKEN_HASH_ALGORITHM = "sha256"
 
 
 def _get_secret_key() -> str:
-    if settings.session_secret_key:
-        return settings.session_secret_key
     return APP_SECRET_KEY
 
 
