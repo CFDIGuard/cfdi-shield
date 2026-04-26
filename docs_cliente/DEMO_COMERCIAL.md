@@ -20,9 +20,9 @@ Presentar CFDI Shield como una solucion local para:
 
 CFDI Shield te ayuda a controlar CFDI en un entorno local, sin subir informacion a la nube y con una operacion pensada para auditoria, seguimiento y control interno.
 
-## Alcance de RR9
+## Alcance del analisis por proveedor
 
-El analisis RR9 de CFDI Shield evalua riesgo por proveedor con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
+El analisis por proveedor de CFDI Shield evalua riesgo con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
 
 ## Flujo recomendado
 

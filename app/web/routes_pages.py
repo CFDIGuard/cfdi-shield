@@ -64,6 +64,14 @@ def _query_suffix(filters: InvoiceFilters) -> str:
     return f"?{urlencode(cleaned)}"
 
 
+def _dashboard_redirect(filters: InvoiceFilters, **params: str) -> str:
+    merged = filters.cleaned()
+    merged.update({key: value for key, value in params.items() if value is not None})
+    if not merged:
+        return "/dashboard-web"
+    return f"/dashboard-web?{urlencode(merged)}"
+
+
 def _invoice_option(invoice) -> dict[str, object]:
     total_mxn = invoice.total_mxn if invoice.total_mxn is not None else (invoice.total_original or invoice.total or 0)
     return {
@@ -495,9 +503,13 @@ def dashboard_web(
             "demo_mode": settings.demo_mode,
             "allow_real_xml_upload": settings.allow_real_xml_upload,
             "dashboard_url": f"/dashboard-web{query_suffix}",
+            "alertas_cfdi_url": f"/reports/alertas-cfdi{query_suffix}",
+            "analisis_proveedor_url": f"/reports/analisis-proveedor{query_suffix}",
             "rr1_url": f"/reports/rr1{query_suffix}",
             "rr9_url": f"/reports/rr9{query_suffix}",
             "export_excel_url": f"/api/v1/dashboard/export-excel{query_suffix}",
+            "export_alertas_cfdi_url": f"/api/v1/dashboard/export-alertas-cfdi-excel{query_suffix}",
+            "export_analisis_proveedor_url": f"/api/v1/dashboard/export-analisis-proveedor-excel{query_suffix}",
             "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
             "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
         },
@@ -685,8 +697,81 @@ def assign_reconciliation(
     )
 
 
+def _render_alertas_cfdi_report(
+    request: Request,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    query_suffix = _query_suffix(filters)
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    reports_bundle = repository.reports(filters=filters)
+    return templates.TemplateResponse(
+        request,
+        "report_alertas_cfdi.html",
+        {
+            "current_user": current_user,
+            "rows": reports_bundle["reports"]["alertas_cfdi"],
+            "summary": reports_bundle["summary"],
+            "dashboard_url": f"/dashboard-web{query_suffix}",
+            "alertas_cfdi_url": f"/reports/alertas-cfdi{query_suffix}",
+            "analisis_proveedor_url": f"/reports/analisis-proveedor{query_suffix}",
+            "export_alertas_cfdi_url": f"/api/v1/dashboard/export-alertas-cfdi-excel{query_suffix}",
+        },
+    )
+
+
+@router.get("/reports/alertas-cfdi", response_class=HTMLResponse, response_model=None)
 @router.get("/reports/rr1", response_class=HTMLResponse, response_model=None)
-def report_rr1_web(
+def report_alertas_cfdi_web(
+    request: Request,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    return _render_alertas_cfdi_report(
+        request=request,
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        db=db,
+        current_user=current_user,
+    )
+
+
+def _render_analisis_proveedor_report(
     request: Request,
     rfc_receptor: str | None = None,
     rfc_emisor: str | None = None,
@@ -717,19 +802,22 @@ def report_rr1_web(
     reports_bundle = repository.reports(filters=filters)
     return templates.TemplateResponse(
         request,
-        "report_rr1.html",
+        "report_analisis_proveedor.html",
         {
             "current_user": current_user,
-            "rows": reports_bundle["reports"]["rr1"],
+            "rows": reports_bundle["reports"]["analisis_proveedor"],
             "summary": reports_bundle["summary"],
             "dashboard_url": f"/dashboard-web{query_suffix}",
-            "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
+            "alertas_cfdi_url": f"/reports/alertas-cfdi{query_suffix}",
+            "analisis_proveedor_url": f"/reports/analisis-proveedor{query_suffix}",
+            "export_analisis_proveedor_url": f"/api/v1/dashboard/export-analisis-proveedor-excel{query_suffix}",
         },
     )
 
 
+@router.get("/reports/analisis-proveedor", response_class=HTMLResponse, response_model=None)
 @router.get("/reports/rr9", response_class=HTMLResponse, response_model=None)
-def report_rr9_web(
+def report_analisis_proveedor_web(
     request: Request,
     rfc_receptor: str | None = None,
     rfc_emisor: str | None = None,
@@ -742,10 +830,8 @@ def report_rr9_web(
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
-    if current_user is None:
-        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
-
-    filters = _build_invoice_filters(
+    return _render_analisis_proveedor_report(
+        request=request,
         rfc_receptor=rfc_receptor,
         rfc_emisor=rfc_emisor,
         proveedor=proveedor,
@@ -754,20 +840,8 @@ def report_rr9_web(
         moneda=moneda,
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
-    )
-    query_suffix = _query_suffix(filters)
-    repository = InvoiceRepository(db, user_id=current_user.id)
-    reports_bundle = repository.reports(filters=filters)
-    return templates.TemplateResponse(
-        request,
-        "report_rr9.html",
-        {
-            "current_user": current_user,
-            "rows": reports_bundle["reports"]["rr9"],
-            "summary": reports_bundle["summary"],
-            "dashboard_url": f"/dashboard-web{query_suffix}",
-            "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
-        },
+        db=db,
+        current_user=current_user,
     )
 
 
@@ -787,6 +861,113 @@ def toggle_sat_validation(
         message = "Modo SAT desactivado. Las nuevas cargas usaran estado local sin consultar SAT."
     return RedirectResponse(
         url=web_url("/dashboard-web", message=message),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/invoices/recalculate-payment-statuses", response_model=None)
+def recalculate_all_payment_statuses_web(
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    current_user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    try:
+        recalculated = repository.recalculate_all_payment_statuses(user_id=current_user.id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Bulk payment status recalculation failed | user=%s",
+            mask_username(current_user.username),
+        )
+        return RedirectResponse(
+            url=_dashboard_redirect(filters, error="No fue posible recalcular los estados de pago."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        url=_dashboard_redirect(
+            filters,
+            message=f"Estados de pago recalculados correctamente ({recalculated} facturas).",
+        ),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/invoices/{invoice_id}/recalculate-payment-status", response_model=None)
+def recalculate_payment_status_web(
+    invoice_id: int,
+    rfc_receptor: str | None = None,
+    rfc_emisor: str | None = None,
+    proveedor: str | None = None,
+    estatus_sat: str | None = None,
+    riesgo: str | None = None,
+    moneda: str | None = None,
+    fecha_desde: str | None = None,
+    fecha_hasta: str | None = None,
+    current_user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    filters = _build_invoice_filters(
+        rfc_receptor=rfc_receptor,
+        rfc_emisor=rfc_emisor,
+        proveedor=proveedor,
+        estatus_sat=estatus_sat,
+        riesgo=riesgo,
+        moneda=moneda,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+    )
+    repository = InvoiceRepository(db, user_id=current_user.id)
+    invoice = repository.get_by_id(invoice_id)
+    if invoice is None:
+        return RedirectResponse(
+            url=_dashboard_redirect(filters, error="La factura ya no existe."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        repository.recalculate_payment_status(invoice.uuid, current_user.id)
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Manual payment status recalculation failed | user=%s | invoice_id=%s | uuid=%s",
+            mask_username(current_user.username),
+            invoice.id,
+            mask_uuid(invoice.uuid),
+        )
+        return RedirectResponse(
+            url=_dashboard_redirect(filters, error="No fue posible recalcular el estado de pago."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        url=_dashboard_redirect(filters, message="Estado de pago recalculado correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
 

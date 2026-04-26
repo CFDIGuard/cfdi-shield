@@ -53,8 +53,8 @@ def _write_rows(ws, headers: list[str], rows: list[list[object]]) -> None:
     _auto_width(ws)
 
 
-def _build_rr1_sheet(ws_rr1, reports: dict[str, object]) -> None:
-    rr1_headers = [
+def _build_alertas_cfdi_sheet(ws_alertas_cfdi, reports: dict[str, object]) -> None:
+    alertas_cfdi_headers = [
         "UUID",
         "RFC emisor",
         "Proveedor",
@@ -66,7 +66,7 @@ def _build_rr1_sheet(ws_rr1, reports: dict[str, object]) -> None:
         "Riesgo",
         "Motivo",
     ]
-    rr1_rows = [
+    alertas_cfdi_rows = [
         [
             row.get("uuid"),
             row.get("rfc_emisor"),
@@ -79,17 +79,17 @@ def _build_rr1_sheet(ws_rr1, reports: dict[str, object]) -> None:
             row.get("riesgo"),
             row.get("motivo"),
         ]
-        for row in reports.get("rr1", [])
+        for row in reports.get("alertas_cfdi") or reports.get("rr1", [])
     ]
-    _write_rows(ws_rr1, rr1_headers, rr1_rows)
-    for cell in ws_rr1["F"][1:]:
+    _write_rows(ws_alertas_cfdi, alertas_cfdi_headers, alertas_cfdi_rows)
+    for cell in ws_alertas_cfdi["F"][1:]:
         cell.number_format = DECIMAL_FORMAT
-    for cell in ws_rr1["G"][1:]:
+    for cell in ws_alertas_cfdi["G"][1:]:
         cell.number_format = MXN_FORMAT
 
 
-def _build_rr9_sheet(ws_rr9, reports: dict[str, object]) -> None:
-    rr9_headers = [
+def _build_analisis_proveedor_sheet(ws_analisis_proveedor, reports: dict[str, object]) -> None:
+    analisis_proveedor_headers = [
         "RFC emisor",
         "Proveedor",
         "Total MXN",
@@ -102,7 +102,7 @@ def _build_rr9_sheet(ws_rr9, reports: dict[str, object]) -> None:
         "Requiere contrato",
         "Motivo",
     ]
-    rr9_rows = [
+    analisis_proveedor_rows = [
         [
             row.get("rfc_emisor"),
             row.get("proveedor"),
@@ -116,10 +116,10 @@ def _build_rr9_sheet(ws_rr9, reports: dict[str, object]) -> None:
             "SI" if row.get("flag_requiere_contrato") else "NO",
             row.get("motivo"),
         ]
-        for row in reports.get("rr9", [])
+        for row in reports.get("analisis_proveedor") or reports.get("rr9", [])
     ]
-    _write_rows(ws_rr9, rr9_headers, rr9_rows)
-    for cell in ws_rr9["C"][1:]:
+    _write_rows(ws_analisis_proveedor, analisis_proveedor_headers, analisis_proveedor_rows)
+    for cell in ws_analisis_proveedor["C"][1:]:
         cell.number_format = MXN_FORMAT
 
 
@@ -220,16 +220,16 @@ def generate_excel_report(
     reports = reports_bundle["reports"]
 
     wb = Workbook()
-    if report_mode == "rr1":
-        ws_rr1 = wb.active
-        ws_rr1.title = "RR1"
-        _build_rr1_sheet(ws_rr1, reports)
+    if report_mode in {"alertas_cfdi", "rr1"}:
+        ws_alertas_cfdi = wb.active
+        ws_alertas_cfdi.title = "ALERTAS_CFDI"
+        _build_alertas_cfdi_sheet(ws_alertas_cfdi, reports)
         ws_resumen_riesgos = wb.create_sheet("RESUMEN_RIESGOS")
         _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports)
-    elif report_mode == "rr9":
-        ws_rr9 = wb.active
-        ws_rr9.title = "RR9"
-        _build_rr9_sheet(ws_rr9, reports)
+    elif report_mode in {"analisis_proveedor", "rr9"}:
+        ws_analisis_proveedor = wb.active
+        ws_analisis_proveedor.title = "ANALISIS_PROVEEDOR"
+        _build_analisis_proveedor_sheet(ws_analisis_proveedor, reports)
         ws_resumen_riesgos = wb.create_sheet("RESUMEN_RIESGOS")
         _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports)
     else:
@@ -379,11 +379,11 @@ def generate_excel_report(
         for cell in ws_riesgos["D"][1:]:
             cell.number_format = MXN_FORMAT
 
-        ws_rr1 = wb.create_sheet("RR1")
-        _build_rr1_sheet(ws_rr1, reports)
+        ws_alertas_cfdi = wb.create_sheet("ALERTAS_CFDI")
+        _build_alertas_cfdi_sheet(ws_alertas_cfdi, reports)
 
-        ws_rr9 = wb.create_sheet("RR9")
-        _build_rr9_sheet(ws_rr9, reports)
+        ws_analisis_proveedor = wb.create_sheet("ANALISIS_PROVEEDOR")
+        _build_analisis_proveedor_sheet(ws_analisis_proveedor, reports)
 
         ws_resumen_riesgos = wb.create_sheet("RESUMEN_RIESGOS")
         _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports)

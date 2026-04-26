@@ -97,7 +97,8 @@
         .button-link,
         .logout-button,
         .toggle-button,
-        .delete-button {
+        .delete-button,
+        .ghost-button {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -140,6 +141,13 @@
             border: 0;
             color: #fff;
             background: linear-gradient(135deg, #ef4444, var(--danger));
+            cursor: pointer;
+        }
+
+        .ghost-button {
+            border: 1px solid var(--line);
+            background: var(--surface-strong);
+            color: var(--ink);
             cursor: pointer;
         }
 
@@ -520,6 +528,12 @@
             font-size: 13px;
         }
 
+        .inline-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
         .table-name span,
         .muted {
             color: var(--muted);
@@ -655,7 +669,7 @@
         <section class="panel filters-panel" aria-label="Filtros avanzados">
             <div>
                 <div class="panel-title">Filtros avanzados</div>
-                <div class="panel-copy">Aplica los mismos filtros sobre dashboard, RR1, RR9 y exportacion Excel.</div>
+                <div class="panel-copy">Aplica los mismos filtros sobre dashboard, alertas por CFDI, analisis por proveedor y exportacion Excel.</div>
             </div>
             <form action="/dashboard-web" method="get">
                 <div class="filters-grid">
@@ -713,6 +727,17 @@
                     <button class="button-link" type="submit">Aplicar filtros</button>
                     <a class="logout-button" href="/dashboard-web">Limpiar filtros</a>
                 </div>
+            </form>
+            <form action="/invoices/recalculate-payment-statuses" method="post" class="filters-actions">
+                <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
+                <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
+                <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
+                <input type="hidden" name="estatus_sat" value="{{ filters.estatus_sat or '' }}">
+                <input type="hidden" name="riesgo" value="{{ filters.riesgo or '' }}">
+                <input type="hidden" name="moneda" value="{{ filters.moneda or '' }}">
+                <input type="hidden" name="fecha_desde" value="{{ filters.fecha_desde or '' }}">
+                <input type="hidden" name="fecha_hasta" value="{{ filters.fecha_hasta or '' }}">
+                <button class="ghost-button" type="submit">Recalcular estados de pago</button>
             </form>
         </section>
 
@@ -843,7 +868,7 @@
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Ultimos CFDI</div>
-                            <div class="panel-copy">Revision rapida de monto, estatus, riesgo y accion de eliminacion.</div>
+                            <div class="panel-copy">Revision rapida de monto, estatus SAT, riesgo y estado de pago real.</div>
                         </div>
                         <span class="tag info">{{ invoices | length }} visibles</span>
                     </div>
@@ -860,6 +885,9 @@
                                         <th>Total original</th>
                                         <th>TC</th>
                                         <th>Total MXN</th>
+                                        <th>Estado pago</th>
+                                        <th>Total pagado</th>
+                                        <th>Saldo pendiente</th>
                                         <th>IVA trasladado</th>
                                         <th>SAT</th>
                                         <th>Riesgo</th>
@@ -891,6 +919,17 @@
                                                     Pendiente
                                                 {% endif %}
                                             </td>
+                                            <td>
+                                                {% if invoice.estado_pago == "PAGADA" %}
+                                                    <span class="tag success">PAGADA</span>
+                                                {% elif invoice.estado_pago == "PARCIAL" %}
+                                                    <span class="tag warning">PARCIAL</span>
+                                                {% else %}
+                                                    <span class="tag high">PENDIENTE</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>${{ "{:,.2f}".format(invoice.total_pagado or 0) }}</td>
+                                            <td>${{ "{:,.2f}".format(invoice.saldo_pendiente or 0) }}</td>
                                             <td>${{ "{:,.2f}".format(invoice.iva_trasladado or invoice.iva or 0) }}</td>
                                             <td>{{ invoice.estatus_sat }}</td>
                                             <td>
@@ -903,9 +942,22 @@
                                                 {% endif %}
                                             </td>
                                             <td>
-                                                <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
-                                                    <button class="delete-button" type="submit">Eliminar</button>
-                                                </form>
+                                                <div class="inline-actions">
+                                                    <form action="/invoices/{{ invoice.id }}/recalculate-payment-status" method="post">
+                                                        <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
+                                                        <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
+                                                        <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
+                                                        <input type="hidden" name="estatus_sat" value="{{ filters.estatus_sat or '' }}">
+                                                        <input type="hidden" name="riesgo" value="{{ filters.riesgo or '' }}">
+                                                        <input type="hidden" name="moneda" value="{{ filters.moneda or '' }}">
+                                                        <input type="hidden" name="fecha_desde" value="{{ filters.fecha_desde or '' }}">
+                                                        <input type="hidden" name="fecha_hasta" value="{{ filters.fecha_hasta or '' }}">
+                                                        <button class="ghost-button" type="submit">Recalcular pago</button>
+                                                    </form>
+                                                    <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                                        <button class="delete-button" type="submit">Eliminar</button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     {% endfor %}
@@ -1045,19 +1097,19 @@
                 <section class="panel" id="reportes-fiscales">
                     <div class="panel-header">
                         <div>
-                            <div class="panel-title">Reportes de riesgo fiscal RR1 / RR9</div>
-                            <div class="panel-copy">Analisis interno por CFDI individual y por proveedor. No se presenta como formato oficial SAT.</div>
+                            <div class="panel-title">Alertas por CFDI y analisis por proveedor</div>
+                            <div class="panel-copy">Lecturas internas para revision operativa. No se presentan como formato oficial SAT.</div>
                         </div>
                     </div>
                     <div class="panel-body">
                         <div class="summary-grid">
                             <article class="mini-metric">
-                                <span>Filas RR1</span>
-                                <strong>{{ summary.rr1_count }}</strong>
+                                <span>Alertas por CFDI</span>
+                                <strong>{{ summary.alertas_cfdi_count }}</strong>
                             </article>
                             <article class="mini-metric">
-                                <span>Filas RR9</span>
-                                <strong>{{ summary.rr9_count }}</strong>
+                                <span>Proveedores en analisis</span>
+                                <strong>{{ summary.analisis_proveedor_count }}</strong>
                             </article>
                             <article class="mini-metric">
                                 <span>Indicadores</span>
@@ -1065,10 +1117,10 @@
                             </article>
                         </div>
                         <div class="report-actions" style="margin-top: 12px;">
-                            <a class="logout-button" href="{{ rr1_url }}">Ver RR1</a>
-                            <a class="logout-button" href="{{ export_rr1_url }}">Exportar RR1</a>
-                            <a class="logout-button" href="{{ rr9_url }}">Ver RR9</a>
-                            <a class="logout-button" href="{{ export_rr9_url }}">Exportar RR9</a>
+                            <a class="logout-button" href="{{ alertas_cfdi_url }}">Ver alertas por CFDI</a>
+                            <a class="logout-button" href="{{ export_alertas_cfdi_url }}">Exportar alertas CFDI</a>
+                            <a class="logout-button" href="{{ analisis_proveedor_url }}">Ver analisis por proveedor</a>
+                            <a class="logout-button" href="{{ export_analisis_proveedor_url }}">Exportar analisis proveedor</a>
                         </div>
                         {% if reports.resumen_riesgos %}
                             <div class="table-wrap dashboard-scroll-section" style="margin-top: 12px;">
@@ -1092,7 +1144,7 @@
                                 </table>
                             </div>
                         {% else %}
-                            <div class="empty">Todavia no hay filas para RR1 o RR9.</div>
+                            <div class="empty">Todavia no hay alertas por CFDI o proveedores en analisis.</div>
                         {% endif %}
                     </div>
                 </section>
@@ -1135,7 +1187,7 @@
                         </div>
                     </div>
                     <div class="panel-body">
-                        {% if summary.riesgos or summary.rr9_alertas %}
+                        {% if summary.riesgos or summary.analisis_proveedor_alertas %}
                             <div class="risk-list dashboard-scroll-section">
                                 {% for riesgo in summary.riesgos %}
                                     <article class="risk-item">
@@ -1154,7 +1206,7 @@
                                         {% endif %}
                                     </article>
                                 {% endfor %}
-                                {% for proveedor_rr9 in summary.rr9_alertas %}
+                                {% for proveedor_rr9 in summary.analisis_proveedor_alertas %}
                                     <article class="risk-item">
                                         <div class="risk-head">
                                             <div>
@@ -1162,11 +1214,11 @@
                                                 <div class="risk-copy">{{ proveedor_rr9.rfc_emisor }}</div>
                                             </div>
                                             {% if proveedor_rr9.riesgo_acumulado == "ALTO" %}
-                                                <span class="tag high">RR9 ALTO</span>
+                                                <span class="tag high">PROVEEDOR ALTO</span>
                                             {% elif proveedor_rr9.riesgo_acumulado == "MEDIO" %}
-                                                <span class="tag warning">RR9 MEDIO</span>
+                                                <span class="tag warning">PROVEEDOR MEDIO</span>
                                             {% else %}
-                                                <span class="tag info">RR9</span>
+                                                <span class="tag info">PROVEEDOR</span>
                                             {% endif %}
                                         </div>
                                         <div class="risk-copy">

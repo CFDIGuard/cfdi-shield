@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 from app.models.invoice import Invoice
 from app.models.payment_complement import PaymentComplement
@@ -32,6 +32,187 @@ def _non_payment_invoices(invoices: list[Invoice]) -> list[Invoice]:
 
 def _visible_invoices(invoices: list[Invoice]) -> list[Invoice]:
     return _non_payment_invoices(invoices)
+
+
+def _invoice_duplicate_counter(invoices: list[Invoice]) -> Counter[tuple[str, float]]:
+    counter: Counter[tuple[str, float]] = Counter()
+    for invoice in invoices:
+        rfc_emisor = str(invoice.rfc_emisor or "").strip().upper()
+        if not rfc_emisor:
+            continue
+        counter[(rfc_emisor, round(float(invoice.total or 0), 2))] += 1
+    return counter
+
+
+def _invoice_risk_score(invoice: Invoice, duplicate_counter: Counter[tuple[str, float]]) -> tuple[float, str, str, str]:
+    score = 0.0
+    motives: list[str] = []
+    actions: list[str] = []
+
+    normalized_risk = str(invoice.riesgo or "").upper()
+    normalized_sat = str(invoice.estatus_sat or "").upper()
+    normalized_payment_status = str(invoice.estado_pago or "").upper()
+    normalized_payment_method = str(invoice.metodo_pago or "").upper()
+    normalized_fx_source = str(invoice.fuente_tipo_cambio or "").upper()
+    iva_amount = _iva_trasladado(invoice)
+
+    duplicate_key = (str(invoice.rfc_emisor or "").strip().upper(), round(float(invoice.total or 0), 2))
+    duplicate_count = duplicate_counter.get(duplicate_key, 0)
+
+    if normalized_risk == "ALTO":
+        score += 55
+        motives.append("Factura ya marcada con riesgo alto")
+        actions.append("Revisar soporte documental y validar CFDI contra operaciones reales.")
+    elif normalized_risk == "MEDIO":
+        score += 30
+        motives.append("Factura con riesgo medio")
+        actions.append("Priorizar una revision operativa antes de su cierre contable.")
+
+    if normalized_sat in {"CANCELADO", "NO_ENCONTRADO", "ERROR"}:
+        score += 20
+        motives.append("Estatus SAT no favorable")
+        actions.append("Validar la situacion del CFDI en SAT y solicitar sustitucion si aplica.")
+    elif normalized_sat == "SIN_VALIDACION":
+        score += 12
+        motives.append("CFDI sin validacion SAT")
+        actions.append("Ejecutar validacion SAT antes de tomarlo como soporte definitivo.")
+
+    if normalized_payment_method == "PPD" and normalized_payment_status == "PENDIENTE":
+        score += 15
+        motives.append("Gasto PPD sin complemento de pago")
+        actions.append("Solicitar o cargar el complemento de pago para cerrar la evidencia de cobro.")
+    elif normalized_payment_status == "PARCIAL":
+        score += 10
+        motives.append("Pago parcial registrado")
+        actions.append("Confirmar parcialidades y revisar saldo pendiente antes del cierre.")
+
+    if duplicate_count > 1:
+        score += 25
+        motives.append("Posible duplicidad por RFC y monto")
+        actions.append("Comparar folio, fecha y soporte para descartar doble registro.")
+
+    if _normalized_text(invoice.moneda_original or invoice.moneda, "MXN").upper() != "MXN" and (
+        invoice.total_mxn is None or normalized_fx_source == "PENDIENTE"
+    ):
+        score += 15
+        motives.append("Moneda extranjera sin conversion firme a MXN")
+        actions.append("Definir tipo de cambio valido antes de integrar el importe a reportes fiscales.")
+
+    if iva_amount > 0 and normalized_sat in {"SIN_VALIDACION", "NO_ENCONTRADO", "ERROR", "CANCELADO"}:
+        score += 15
+        motives.append("IVA potencialmente no acreditable")
+        actions.append("No acreditar IVA hasta validar la vigencia y trazabilidad del CFDI.")
+
+    if not invoice.rfc_emisor or not invoice.rfc_receptor or not invoice.fecha_emision:
+        score += 10
+        motives.append("CFDI con datos incompletos")
+        actions.append("Corregir datos faltantes o sustituir el XML antes de seguir procesandolo.")
+
+    score = round(min(100.0, score), 2)
+    if score >= 70:
+        level = "HIGH"
+    elif score >= 35:
+        level = "MEDIUM"
+    else:
+        level = "LOW"
+
+    if not motives:
+        motives.append("Sin alertas operativas relevantes en esta revision.")
+    if not actions:
+        actions.append("Mantener monitoreo rutinario y conservar soporte documental.")
+
+    return score, level, "; ".join(motives), " ".join(dict.fromkeys(actions))
+
+
+def _build_indicator_rows(
+    *,
+    visible_invoices: list[Invoice],
+    complementos_pago: list[dict[str, object]],
+    unmatched_bank_transactions: int,
+) -> list[dict[str, object]]:
+    invoices_without_payment_complement = sum(
+        1
+        for invoice in visible_invoices
+        if str(invoice.metodo_pago or "").upper() == "PPD" and str(invoice.estado_pago or "").upper() == "PENDIENTE"
+    )
+    cfdi_without_sat_validation = sum(
+        1 for invoice in visible_invoices if str(invoice.estatus_sat or "").upper() == "SIN_VALIDACION"
+    )
+    pending_complements = sum(
+        1 for row in complementos_pago if str(row.get("estado_relacion") or "").upper() != "RELACIONADA"
+    )
+    return [
+        {
+            "titulo": "Facturas sin complemento de pago",
+            "valor": invoices_without_payment_complement,
+            "nivel": "HIGH" if invoices_without_payment_complement else "LOW",
+            "motivo": "Facturas PPD visibles que siguen pendientes de complemento y pueden afectar el cierre documental.",
+            "accion_sugerida": "Solicitar o cargar los complementos pendientes antes del cierre contable.",
+        },
+        {
+            "titulo": "CFDI sin validacion SAT",
+            "valor": cfdi_without_sat_validation,
+            "nivel": "MEDIUM" if cfdi_without_sat_validation else "LOW",
+            "motivo": "Estos CFDI aun no tienen confirmacion de vigencia en SAT.",
+            "accion_sugerida": "Ejecutar validacion SAT para evitar acreditar documentos sin verificacion.",
+        },
+        {
+            "titulo": "Transacciones bancarias sin conciliar",
+            "valor": unmatched_bank_transactions,
+            "nivel": "HIGH" if unmatched_bank_transactions else "LOW",
+            "motivo": "Movimientos bancarios pendientes de relacion con CFDI, utiles para detectar huecos de soporte o registro.",
+            "accion_sugerida": "Revisar la conciliacion y confirmar o descartar coincidencias antes de reportar gastos.",
+        },
+        {
+            "titulo": "Complementos sin factura relacionada",
+            "valor": pending_complements,
+            "nivel": "HIGH" if pending_complements else "LOW",
+            "motivo": "Complementos cargados que no pudieron quedar ligados a una factura base del usuario.",
+            "accion_sugerida": "Corregir la relacion del complemento para evitar distorsion en estados de pago.",
+        },
+    ]
+
+
+def _build_opportunity_rows(
+    *,
+    visible_invoices: list[Invoice],
+    duplicate_counter: Counter[tuple[str, float]],
+) -> list[dict[str, object]]:
+    iva_not_credited = sum(
+        1
+        for invoice in visible_invoices
+        if _iva_trasladado(invoice) > 0 and str(invoice.estatus_sat or "").upper() in {"SIN_VALIDACION", "NO_ENCONTRADO", "ERROR", "CANCELADO"}
+    )
+    expenses_without_complement = sum(
+        1
+        for invoice in visible_invoices
+        if str(invoice.metodo_pago or "").upper() == "PPD" and str(invoice.estado_pago or "").upper() != "PAGADA"
+    )
+    duplicate_invoices = sum(1 for count in duplicate_counter.values() if count > 1)
+
+    return [
+        {
+            "titulo": "IVA no acreditado",
+            "valor": iva_not_credited,
+            "nivel": "MEDIUM" if iva_not_credited else "LOW",
+            "motivo": "CFDI con IVA trasladado pero sin evidencia SAT suficiente para acreditarlo con comodidad.",
+            "accion_sugerida": "Separar estos CFDI para revision fiscal antes de considerar su acreditamiento.",
+        },
+        {
+            "titulo": "Gastos sin complemento",
+            "valor": expenses_without_complement,
+            "nivel": "HIGH" if expenses_without_complement else "LOW",
+            "motivo": "Facturas PPD sin complemento finalizado que dejan incompleta la trazabilidad del gasto.",
+            "accion_sugerida": "Pedir el complemento de pago o confirmar el saldo antes de cerrar el periodo.",
+        },
+        {
+            "titulo": "Posibles facturas duplicadas",
+            "valor": duplicate_invoices,
+            "nivel": "HIGH" if duplicate_invoices else "LOW",
+            "motivo": "Se detectaron patrones repetidos por RFC emisor y monto, utiles para revisar dobles registros.",
+            "accion_sugerida": "Comparar soporte, folios y fechas para depurar duplicados antes de exportar o contabilizar.",
+        },
+    ]
 
 
 def _build_payment_complements_report(
@@ -282,6 +463,8 @@ def build_reports_bundle(
     proveedores = _build_provider_report(visible_invoices)
     riesgos = _build_risk_report(visible_invoices)
     fiscal_risk_reports = build_fiscal_risk_reports(visible_invoices)
+    alertas_cfdi = fiscal_risk_reports["alertas_cfdi"]
+    analisis_proveedor = fiscal_risk_reports["analisis_proveedor"]
     complementos_pago = _build_payment_complements_report(invoices, payment_complements)
 
     total_facturado = float(sum(_mxn_amount(invoice) for invoice in visible_invoices))
@@ -325,14 +508,19 @@ def build_reports_bundle(
             "riesgo_bajo": riesgo_bajo,
             "top_proveedores": proveedores[:5],
             "riesgos": [row for row in riesgos if row["riesgo"] == "ALTO"][:8],
-            "rr1_count": len(fiscal_risk_reports["rr1"]),
-            "rr9_count": len(fiscal_risk_reports["rr9"]),
+            "alertas_cfdi_count": len(alertas_cfdi),
+            "analisis_proveedor_count": len(analisis_proveedor),
+            "rr1_count": len(alertas_cfdi),
+            "rr9_count": len(analisis_proveedor),
             "facturas_pagadas": facturas_pagadas,
             "facturas_parciales": facturas_parciales,
             "facturas_pendientes": facturas_pendientes,
             "complementos_sin_factura_relacionada": complementos_sin_factura_relacionada,
+            "analisis_proveedor_alertas": [
+                row for row in analisis_proveedor if str(row.get("riesgo_acumulado", "")).upper() in {"ALTO", "MEDIO"}
+            ][:8],
             "rr9_alertas": [
-                row for row in fiscal_risk_reports["rr9"] if str(row.get("riesgo_acumulado", "")).upper() in {"ALTO", "MEDIO"}
+                row for row in analisis_proveedor if str(row.get("riesgo_acumulado", "")).upper() in {"ALTO", "MEDIO"}
             ][:8],
         },
         "reports": {
@@ -340,8 +528,10 @@ def build_reports_bundle(
             "control": control,
             "proveedores": proveedores,
             "riesgos": riesgos,
-            "rr1": fiscal_risk_reports["rr1"],
-            "rr9": fiscal_risk_reports["rr9"],
+            "alertas_cfdi": alertas_cfdi,
+            "analisis_proveedor": analisis_proveedor,
+            "rr1": alertas_cfdi,
+            "rr9": analisis_proveedor,
             "resumen_riesgos": fiscal_risk_reports["resumen_riesgos"],
             "complementos_pago": complementos_pago,
         },

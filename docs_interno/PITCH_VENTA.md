@@ -17,8 +17,8 @@ CFDI Shield te ayuda a revisar CFDI con mas orden y menos trabajo manual. Puedes
 
 CFDI Shield le da a la empresa control real sobre sus CFDI en un entorno local. El sistema centraliza carga, validacion, riesgos, proveedores y reportes sin depender de una nube externa propia. Eso ayuda a reducir errores, mejorar seguimiento documental y tener informacion lista para auditoria o revision interna.
 
-Nota sobre RR9:
-El analisis RR9 de CFDI Shield evalua riesgo por proveedor con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
+Nota sobre el analisis por proveedor:
+El analisis por proveedor de CFDI Shield evalua riesgo con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
 
 ## 4. Objeciones comunes y respuestas
 

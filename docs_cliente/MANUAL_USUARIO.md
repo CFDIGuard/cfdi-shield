@@ -58,8 +58,8 @@ Tambien incluye:
 - seccion de riesgos destacados
 - resumen por periodo
 
-Nota sobre RR9:
-El analisis RR9 de CFDI Shield evalua riesgo por proveedor con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
+Nota sobre el analisis por proveedor:
+El analisis por proveedor de CFDI Shield evalua riesgo con base en CFDI cargados: concentracion, volumen, cancelaciones, repeticion, multimoneda e informacion incompleta. No analiza accionistas, consejeros ni estructura corporativa.
 
 ## 4. Exportar Excel
 

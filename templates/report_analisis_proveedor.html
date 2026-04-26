@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFDI Shield | Reporte RR9</title>
+    <title>CFDI Shield | Analisis por proveedor</title>
     <style>
         :root {
             --bg: #edf3f8;
@@ -318,8 +318,8 @@
             </div>
             <nav class="nav" aria-label="Navegacion principal">
                 <a href="/">Cargar</a>
-                <a href="/reports/rr1">Reporte RR1</a>
-                <a class="active" href="/reports/rr9">Reporte RR9</a>
+                <a href="{{ alertas_cfdi_url }}">Alertas por CFDI</a>
+                <a class="active" href="{{ analisis_proveedor_url }}">Analisis por proveedor</a>
                 <a href="{{ dashboard_url }}">Dashboard</a>
             </nav>
             <div class="account">
@@ -329,26 +329,26 @@
 
         <section class="hero">
             <div>
-                <h1>Reporte RR9</h1>
+                <h1>Analisis por proveedor</h1>
                 <p class="subtitle">
                     Analisis de riesgo por proveedor y operaciones. Esta vista resume concentracion,
-                    volumen, cancelaciones, monedas usadas, score RR9 y si la operacion probablemente requiere soporte contractual.
+                    volumen, cancelaciones, monedas usadas, score de riesgo y si la operacion probablemente requiere soporte contractual.
                 </p>
                 <div class="hero-highlights">
-                    <span class="highlight">{{ rows | length }} filas RR9</span>
+                    <span class="highlight">{{ rows | length }} proveedores en analisis</span>
                     <span class="highlight">{{ summary.proveedores_unicos }} proveedores unicos</span>
-                    <span class="highlight">{{ summary.rr9_count }} proveedores con alerta RR9</span>
+                    <span class="highlight">{{ summary.analisis_proveedor_count }} proveedores con alerta</span>
                 </div>
             </div>
             <div class="toolbar">
                 <a class="ghost-button" href="{{ dashboard_url }}">Volver al dashboard</a>
-                <a class="button-link" href="{{ export_rr9_url }}">Exportar Excel</a>
+                <a class="button-link" href="{{ export_analisis_proveedor_url }}">Exportar Excel</a>
             </div>
         </section>
 
-        <section class="grid" aria-label="Resumen RR9">
+        <section class="grid" aria-label="Resumen de analisis por proveedor">
             <article class="metric">
-                <div class="metric-label">Filas RR9</div>
+                <div class="metric-label">Proveedores en analisis</div>
                 <div class="metric-value">{{ rows | length }}</div>
             </article>
             <article class="metric">
@@ -382,7 +382,7 @@
                                     <th>Canceladas</th>
                                     <th>% canceladas</th>
                                     <th>Monedas usadas</th>
-                                    <th>Score RR9</th>
+                                    <th>Score riesgo</th>
                                     <th>Nivel de riesgo</th>
                                     <th>Requiere contrato</th>
                                     <th>Motivo</th>
@@ -423,7 +423,7 @@
                         </table>
                     </div>
                 {% else %}
-                    <div class="empty">Todavia no hay filas RR9 para mostrar.</div>
+                    <div class="empty">Todavia no hay proveedores en analisis para mostrar.</div>
                 {% endif %}
             </div>
         </section>

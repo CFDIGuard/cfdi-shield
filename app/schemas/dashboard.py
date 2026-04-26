@@ -64,6 +64,14 @@ class FiscalRiskMetricRow(BaseModel):
     detalle: str
 
 
+class AlertActionRow(BaseModel):
+    titulo: str
+    valor: int
+    nivel: str
+    motivo: str
+    accion_sugerida: str
+
+
 class MonthlySummary(BaseModel):
     mes: str
     facturas: int
@@ -114,7 +122,10 @@ class ControlRow(BaseModel):
     estado_pago: str | None = None
     estatus_sat: str
     riesgo: str
+    score_riesgo: float = 0
+    nivel_riesgo: str | None = None
     detalle_riesgo: str | None = None
+    accion_sugerida: str | None = None
     sat_validado_at: str | None = None
     created_at: str | None = None
 
@@ -137,13 +148,20 @@ class DashboardSummary(BaseModel):
     riesgo_bajo: int
     top_proveedores: list[ProviderSummary]
     riesgos: list[RiskSummary]
+    alertas_cfdi_count: int = 0
+    analisis_proveedor_count: int = 0
     rr1_count: int = 0
     rr9_count: int = 0
     facturas_pagadas: int = 0
     facturas_parciales: int = 0
     facturas_pendientes: int = 0
     complementos_sin_factura_relacionada: int = 0
+    facturas_sin_complemento_pago: int = 0
+    transacciones_bancarias_sin_conciliar: int = 0
+    analisis_proveedor_alertas: list[FiscalRiskSupplierRow] = []
     rr9_alertas: list[FiscalRiskSupplierRow] = []
+    indicadores_riesgo: list[AlertActionRow] = []
+    oportunidades_fiscales: list[AlertActionRow] = []
 
 
 class ReportsBundle(BaseModel):
@@ -151,6 +169,8 @@ class ReportsBundle(BaseModel):
     control: list[ControlRow]
     proveedores: list[ProviderSummary]
     riesgos: list[RiskSummary]
+    alertas_cfdi: list[FiscalRiskInvoiceRow] = []
+    analisis_proveedor: list[FiscalRiskSupplierRow] = []
     rr1: list[FiscalRiskInvoiceRow] = []
     rr9: list[FiscalRiskSupplierRow] = []
     resumen_riesgos: list[FiscalRiskMetricRow] = []

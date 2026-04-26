@@ -89,6 +89,13 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         invoice_a2_payload.detalle_riesgo = ""
         invoice_a2 = repo_a.create(invoice_a2_payload)
 
+        invoice_partial_payload = _make_invoice(user_a.id, "AAAAAAAA-5555-4555-8555-AAAAAAAAAAAA", 7500.0, "Proveedor Parcial")
+        invoice_partial_payload.rfc_emisor = "DDD010101DDD"
+        invoice_partial_payload.estatus_sat = "VIGENTE"
+        invoice_partial_payload.riesgo = "MEDIO"
+        invoice_partial_payload.detalle_riesgo = "Pago parcial detectado"
+        invoice_partial = repo_a.create(invoice_partial_payload)
+
         payment_a_payload = _make_invoice(user_a.id, "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA", 0.0, "Proveedor A")
         payment_a_payload.tipo_comprobante = "P"
         payment_a_payload.moneda = "XXX"
@@ -113,6 +120,36 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         assert float(refreshed_invoice_a.total_pagado or 0) == 100.0
         assert float(refreshed_invoice_a.saldo_pendiente or 0) == 0.0
 
+        payment_partial_payload = _make_invoice(user_a.id, "AAAAAAAA-6666-4666-8666-AAAAAAAAAAAA", 0.0, "Proveedor Parcial")
+        payment_partial_payload.tipo_comprobante = "P"
+        payment_partial_payload.moneda = "XXX"
+        payment_partial_payload.moneda_original = "XXX"
+        payment_partial_payload.metodo_pago = "PPD"
+        payment_partial_payload.payment_complements = [
+            PaymentComplementProcessedData(
+                related_invoice_uuid=invoice_partial.uuid,
+                fecha_pago="2026-04-26T11:00:00",
+                moneda_pago="MXN",
+                monto_pago=3000.0,
+                parcialidad=1,
+                saldo_anterior=7500.0,
+                importe_pagado=3000.0,
+                saldo_insoluto=4500.0,
+            )
+        ]
+        repo_a.create(payment_partial_payload)
+        refreshed_invoice_partial = repo_a.get_by_id(invoice_partial.id)
+        assert refreshed_invoice_partial is not None
+        assert refreshed_invoice_partial.estado_pago == "PARCIAL"
+        assert float(refreshed_invoice_partial.total_pagado or 0) == 3000.0
+        assert float(refreshed_invoice_partial.saldo_pendiente or 0) == 4500.0
+
+        refreshed_invoice_a2 = repo_a.get_by_id(invoice_a2.id)
+        assert refreshed_invoice_a2 is not None
+        assert refreshed_invoice_a2.estado_pago == "PENDIENTE"
+        assert float(refreshed_invoice_a2.total_pagado or 0) == 0.0
+        assert float(refreshed_invoice_a2.saldo_pendiente or 0) == 150.0
+
         invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
         invoice_b_payload.estatus_sat = "SIN_VALIDACION"
         invoice_b_payload.riesgo = "MEDIO"
@@ -134,19 +171,56 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Estado pago" in control_headers_a
     values_a = "\n".join("" if cell is None else str(cell) for row in control_a.iter_rows(values_only=True) for cell in row)
     assert "Proveedor A" in values_a
+    assert "Proveedor Parcial" in values_a
     assert "Proveedor B" not in values_a
     assert "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB" not in values_a
     assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" not in values_a
     resumen_a = workbook_a["RESUMEN"]
     resumen_values_a = {row[0]: row[1] for row in resumen_a.iter_rows(values_only=True) if row and row[0]}
     assert resumen_values_a.get("Facturas pagadas") == 1
+    assert resumen_values_a.get("Facturas parciales") == 1
+    assert resumen_values_a.get("Facturas pendientes") == 1
 
     list_a = client.get("/api/v1/invoices", cookies=cookie_a)
     assert list_a.status_code == 200
     listed_uuids_a = {item["uuid"] for item in list_a.json()}
     assert "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA" in listed_uuids_a
     assert "AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA" in listed_uuids_a
+    assert "AAAAAAAA-5555-4555-8555-AAAAAAAAAAAA" in listed_uuids_a
     assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" not in listed_uuids_a
+    assert "AAAAAAAA-6666-4666-8666-AAAAAAAAAAAA" not in listed_uuids_a
+
+    dashboard_a = client.get("/dashboard-web", cookies=cookie_a)
+    assert dashboard_a.status_code == 200
+    assert "Estado pago" in dashboard_a.text
+    assert "Total pagado" in dashboard_a.text
+    assert "Saldo pendiente" in dashboard_a.text
+    assert "PAGADA" in dashboard_a.text
+    assert "PARCIAL" in dashboard_a.text
+    assert "PENDIENTE" in dashboard_a.text
+
+    with testing_session_local() as db:
+        repair_repo = InvoiceRepository(db, user_id=user_a.id)
+        damaged_invoice = repair_repo.get_by_id(invoice_a.id)
+        assert damaged_invoice is not None
+        damaged_invoice.total_pagado = 0
+        damaged_invoice.saldo_pendiente = 100
+        damaged_invoice.estado_pago = "PENDIENTE"
+        db.commit()
+
+    recalc_a = client.post(
+        f"/invoices/{invoice_a.id}/recalculate-payment-status",
+        cookies=cookie_a,
+        follow_redirects=False,
+    )
+    assert recalc_a.status_code == 303
+
+    with testing_session_local() as db:
+        repaired_invoice = InvoiceRepository(db, user_id=user_a.id).get_by_id(invoice_a.id)
+        assert repaired_invoice is not None
+        assert repaired_invoice.estado_pago == "PAGADA"
+        assert float(repaired_invoice.total_pagado or 0) == 100.0
+        assert float(repaired_invoice.saldo_pendiente or 0) == 0.0
 
     response_b = client.get("/api/v1/dashboard/export-excel", cookies=cookie_b)
     assert response_b.status_code == 200
@@ -160,7 +234,7 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     rr1_a = client.get("/api/v1/dashboard/export-rr1-excel", cookies=cookie_a)
     assert rr1_a.status_code == 200
     rr1_book_a = load_workbook(filename=BytesIO(rr1_a.content))
-    rr1_sheet_a = rr1_book_a["RR1"]
+    rr1_sheet_a = rr1_book_a["ALERTAS_CFDI"]
     rr1_values_a = "\n".join("" if cell is None else str(cell) for row in rr1_sheet_a.iter_rows(values_only=True) for cell in row)
     assert "Proveedor A" in rr1_values_a
     assert "Proveedor B" not in rr1_values_a
@@ -168,10 +242,20 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     rr9_b = client.get("/api/v1/dashboard/export-rr9-excel", cookies=cookie_b)
     assert rr9_b.status_code == 200
     rr9_book_b = load_workbook(filename=BytesIO(rr9_b.content))
-    rr9_sheet_b = rr9_book_b["RR9"]
+    rr9_sheet_b = rr9_book_b["ANALISIS_PROVEEDOR"]
     rr9_values_b = "\n".join("" if cell is None else str(cell) for row in rr9_sheet_b.iter_rows(values_only=True) for cell in row)
     assert "Proveedor B" in rr9_values_b
     assert "Proveedor A" not in rr9_values_b
+
+    alertas_cfdi_export = client.get("/api/v1/dashboard/export-alertas-cfdi-excel", cookies=cookie_a)
+    assert alertas_cfdi_export.status_code == 200
+    alertas_cfdi_book = load_workbook(filename=BytesIO(alertas_cfdi_export.content))
+    assert "ALERTAS_CFDI" in alertas_cfdi_book.sheetnames
+
+    analisis_proveedor_export = client.get("/api/v1/dashboard/export-analisis-proveedor-excel", cookies=cookie_b)
+    assert analisis_proveedor_export.status_code == 200
+    analisis_proveedor_book = load_workbook(filename=BytesIO(analisis_proveedor_export.content))
+    assert "ANALISIS_PROVEEDOR" in analisis_proveedor_book.sheetnames
 
     filtered_excel_a = client.get(
         "/api/v1/dashboard/export-excel?rfc_emisor=AAA010101AAA&estatus_sat=CANCELADO",
@@ -194,6 +278,21 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Proveedor A2" not in rr1_filtered_page.text
     assert "Proveedor B" not in rr1_filtered_page.text
 
+    alertas_cfdi_page = client.get(
+        "/reports/alertas-cfdi?rfc_emisor=AAA010101AAA&estatus_sat=CANCELADO",
+        cookies=cookie_a,
+    )
+    assert alertas_cfdi_page.status_code == 200
+    assert "Proveedor A" in alertas_cfdi_page.text
+    assert "Proveedor B" not in alertas_cfdi_page.text
+
+    alertas_cfdi_api = client.get(
+        "/api/v1/dashboard/reports/alertas-cfdi?rfc_emisor=AAA010101AAA&estatus_sat=CANCELADO",
+        cookies=cookie_a,
+    )
+    assert alertas_cfdi_api.status_code == 200
+    assert any(row["proveedor"] == "Proveedor A" for row in alertas_cfdi_api.json())
+
     rr9_filtered_page = client.get(
         "/reports/rr9?rfc_emisor=BBB010101BBB&riesgo=MEDIO",
         cookies=cookie_b,
@@ -201,6 +300,21 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert rr9_filtered_page.status_code == 200
     assert "Proveedor B" in rr9_filtered_page.text
     assert "Proveedor A" not in rr9_filtered_page.text
+
+    analisis_proveedor_page = client.get(
+        "/reports/analisis-proveedor?rfc_emisor=BBB010101BBB&riesgo=MEDIO",
+        cookies=cookie_b,
+    )
+    assert analisis_proveedor_page.status_code == 200
+    assert "Proveedor B" in analisis_proveedor_page.text
+    assert "Proveedor A" not in analisis_proveedor_page.text
+
+    analisis_proveedor_api = client.get(
+        "/api/v1/dashboard/reports/analisis-proveedor?rfc_emisor=BBB010101BBB&riesgo=MEDIO",
+        cookies=cookie_b,
+    )
+    assert analisis_proveedor_api.status_code == 200
+    assert any(row["proveedor"] == "Proveedor B" for row in analisis_proveedor_api.json())
 
     bank_csv = (
         "fecha,descripcion,referencia,monto\n"

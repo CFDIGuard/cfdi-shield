@@ -40,7 +40,7 @@ Version final estable para entrega comercial, con instalador Windows generado y 
 - scripts de instalacion e inicio para Windows
 - documentacion de usuario, instalacion, privacidad, soporte y ventas
 
-## RR9 - Riesgo por proveedor
+## Analisis por proveedor
 
 - score de riesgo `0` a `100`
 - clasificacion `LOW / MEDIUM / HIGH`
@@ -53,8 +53,15 @@ Version final estable para entrega comercial, con instalador Windows generado y 
 - bandera: requiere soporte contractual
 
 Nota:
-El analisis RR9 se basa unicamente en CFDI y operaciones con proveedores.
+El analisis por proveedor se basa unicamente en CFDI y operaciones con proveedores.
 No analiza accionistas, consejeros ni estructura corporativa.
+
+## Nombres legacy
+
+- `RR1` y `RR9` se conservan como nombres legacy en rutas y compatibilidad tecnica.
+- Los nombres comerciales actuales son:
+  - `Alertas por CFDI`
+  - `Analisis por proveedor`
 
 ## Requisitos
 

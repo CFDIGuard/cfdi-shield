@@ -103,22 +103,40 @@ def get_riesgos_report(
     return InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)["reports"]["riesgos"]
 
 
+def _alertas_cfdi_rows(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+    filters: InvoiceFilters = Depends(get_invoice_filters),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)["reports"]["alertas_cfdi"]
+
+
+@router.get("/reports/alertas-cfdi", response_model=list[FiscalRiskInvoiceRow])
 @router.get("/reports/rr1", response_model=list[FiscalRiskInvoiceRow])
-def get_rr1_report(
+def get_alertas_cfdi_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_api_current_user),
     filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> list[dict[str, object]]:
-    return InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)["reports"]["rr1"]
+    return _alertas_cfdi_rows(db=db, current_user=current_user, filters=filters)
 
 
+def _analisis_proveedor_rows(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_api_current_user),
+    filters: InvoiceFilters = Depends(get_invoice_filters),
+) -> list[dict[str, object]]:
+    return InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)["reports"]["analisis_proveedor"]
+
+
+@router.get("/reports/analisis-proveedor", response_model=list[FiscalRiskSupplierRow])
 @router.get("/reports/rr9", response_model=list[FiscalRiskSupplierRow])
-def get_rr9_report(
+def get_analisis_proveedor_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_api_current_user),
     filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> list[dict[str, object]]:
-    return InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)["reports"]["rr9"]
+    return _analisis_proveedor_rows(db=db, current_user=current_user, filters=filters)
 
 
 @router.get("/reports/resumen-riesgos", response_model=list[FiscalRiskMetricRow])
@@ -149,15 +167,16 @@ def export_excel_report(
     )
 
 
+@router.get("/export-alertas-cfdi-excel", response_model=None)
 @router.get("/export-rr1-excel", response_model=None)
-def export_rr1_excel_report(
+def export_alertas_cfdi_excel_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_api_current_user),
     filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> StreamingResponse:
     reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)
-    workbook_bytes = generate_excel_report(reports_bundle, report_mode="rr1")
-    filename = f"cfdi_shield_rr1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    workbook_bytes = generate_excel_report(reports_bundle, report_mode="alertas_cfdi")
+    filename = f"cfdi_shield_alertas_cfdi_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
         BytesIO(workbook_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -165,15 +184,16 @@ def export_rr1_excel_report(
     )
 
 
+@router.get("/export-analisis-proveedor-excel", response_model=None)
 @router.get("/export-rr9-excel", response_model=None)
-def export_rr9_excel_report(
+def export_analisis_proveedor_excel_report(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_api_current_user),
     filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> StreamingResponse:
     reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)
-    workbook_bytes = generate_excel_report(reports_bundle, report_mode="rr9")
-    filename = f"cfdi_shield_rr9_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    workbook_bytes = generate_excel_report(reports_bundle, report_mode="analisis_proveedor")
+    filename = f"cfdi_shield_analisis_proveedor_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
         BytesIO(workbook_bytes),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
