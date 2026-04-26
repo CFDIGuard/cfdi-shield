@@ -140,6 +140,7 @@ def _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows: list[dict[st
         "Cargo",
         "Abono",
         "Monto",
+        "Origen",
         "Estado conciliacion",
         "Score",
         "Motivo",
@@ -155,6 +156,7 @@ def _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows: list[dict[st
             row.get("cargo"),
             row.get("abono"),
             row.get("monto"),
+            row.get("origen"),
             row.get("match_status"),
             row.get("match_score"),
             row.get("match_reason"),
@@ -165,9 +167,9 @@ def _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows: list[dict[st
         for row in reconciliation_rows
     ]
     _write_rows(ws_conciliacion, headers, rows)
-    for cell in ws_conciliacion["D"][1:] + ws_conciliacion["E"][1:] + ws_conciliacion["F"][1:] + ws_conciliacion["H"][1:]:
+    for cell in ws_conciliacion["D"][1:] + ws_conciliacion["E"][1:] + ws_conciliacion["F"][1:] + ws_conciliacion["I"][1:]:
         cell.number_format = DECIMAL_FORMAT
-    for cell in ws_conciliacion["L"][1:]:
+    for cell in ws_conciliacion["M"][1:]:
         cell.number_format = MXN_FORMAT
 
 

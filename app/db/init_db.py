@@ -5,7 +5,7 @@ from sqlalchemy import inspect, text
 
 from app.db.base import Base
 from app.db.session import engine
-from app.models import Invoice, SatValidationCache, User
+from app.models import BankTransaction, Invoice, SatValidationCache, User
 
 
 logger = logging.getLogger(__name__)
@@ -173,6 +173,22 @@ def _ensure_invoice_columns() -> None:
             )
 
 
+def _ensure_bank_transaction_columns() -> None:
+    if "bank_transactions" not in inspect(engine).get_table_names():
+        return
+
+    statements = {
+        "origen": _add_column_statement(
+            "bank_transactions",
+            "origen",
+            "VARCHAR",
+            "'AUTOMATICO'",
+        ),
+    }
+    for column_name, statement in statements.items():
+        _execute_add_column_if_missing("bank_transactions", column_name, statement)
+
+
 def _first_user_id() -> int | None:
     with engine.begin() as connection:
         row = connection.execute(
@@ -215,6 +231,7 @@ def ensure_db_initialized() -> None:
         Base.metadata.create_all(bind=engine)
         _ensure_user_columns()
         _ensure_invoice_columns()
+        _ensure_bank_transaction_columns()
         _backfill_invoice_user_id()
         _ensure_invoice_user_ownership_constraints()
         _ensure_invoice_indexes()

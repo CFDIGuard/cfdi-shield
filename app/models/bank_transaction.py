@@ -24,6 +24,7 @@ class BankTransaction(Base):
     moneda: Mapped[str | None] = mapped_column(String, default="MXN")
     raw_hash: Mapped[str] = mapped_column(String, index=True, nullable=False)
     matched_invoice_id: Mapped[int | None] = mapped_column(ForeignKey("invoices.id"), index=True, default=None)
+    origen: Mapped[str] = mapped_column(String, default="AUTOMATICO")
     match_status: Mapped[str] = mapped_column(String, default="PENDIENTE")
     match_score: Mapped[float] = mapped_column(Float, default=0)
     match_reason: Mapped[str | None] = mapped_column(Text, default=None)

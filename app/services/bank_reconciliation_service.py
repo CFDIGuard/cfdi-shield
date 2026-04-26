@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.models.invoice import Invoice
 from app.repositories.bank_transaction_repository import BankTransactionRepository
 from app.repositories.invoice_repository import InvoiceRepository
+from app.schemas.bank_reconciliation import BankReconciliationFilters
 from app.services.bank_statement_parser import ParsedBankTransaction, parse_bank_statement
 
 
@@ -150,6 +151,7 @@ def reconcile_transactions(
                 "moneda": transaction.moneda,
                 "raw_hash": transaction.raw_hash,
                 "matched_invoice_id": best_invoice.id if best_invoice is not None else None,
+                "origen": "AUTOMATICO",
                 "match_status": status,
                 "match_score": round(best_score, 2),
                 "match_reason": "; ".join(best_reasons),
@@ -180,16 +182,22 @@ def process_bank_statement_upload(
     return bank_repository.summary()
 
 
-def get_reconciliation_rows(db: Session, user_id: int, limit: int = 150) -> list[dict[str, object]]:
+def get_reconciliation_rows(
+    db: Session,
+    user_id: int,
+    limit: int = 150,
+    filters: BankReconciliationFilters | None = None,
+) -> list[dict[str, object]]:
     bank_repository = BankTransactionRepository(db, user_id=user_id)
     invoice_repository = InvoiceRepository(db, user_id=user_id)
     invoices_by_id = {invoice.id: invoice for invoice in invoice_repository.list_all()}
 
     rows: list[dict[str, object]] = []
-    for movement in bank_repository.list_recent(limit=limit):
+    for movement in bank_repository.list_recent(limit=limit, filters=filters):
         matched_invoice = invoices_by_id.get(movement.matched_invoice_id)
         rows.append(
             {
+                "id": movement.id,
                 "fecha": movement.fecha,
                 "descripcion": movement.descripcion,
                 "referencia": movement.referencia,
@@ -198,6 +206,8 @@ def get_reconciliation_rows(db: Session, user_id: int, limit: int = 150) -> list
                 "monto": float(movement.monto or 0),
                 "tipo_movimiento": movement.tipo_movimiento,
                 "moneda": movement.moneda,
+                "origen": movement.origen,
+                "matched_invoice_id": movement.matched_invoice_id,
                 "match_status": movement.match_status,
                 "match_score": float(movement.match_score or 0),
                 "match_reason": movement.match_reason,
@@ -209,5 +219,9 @@ def get_reconciliation_rows(db: Session, user_id: int, limit: int = 150) -> list
     return rows
 
 
-def get_reconciliation_summary(db: Session, user_id: int) -> dict[str, int]:
-    return BankTransactionRepository(db, user_id=user_id).summary()
+def get_reconciliation_summary(
+    db: Session,
+    user_id: int,
+    filters: BankReconciliationFilters | None = None,
+) -> dict[str, int]:
+    return BankTransactionRepository(db, user_id=user_id).summary(filters=filters)

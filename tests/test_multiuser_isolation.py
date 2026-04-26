@@ -12,6 +12,7 @@ from app.db.base import Base
 from app.db import init_db as init_db_module
 from app.db import session as session_module
 from app.main import app
+from app.repositories.bank_transaction_repository import BankTransactionRepository
 from app.models.invoice import Invoice
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
@@ -189,6 +190,55 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Pago Proveedor A AAA010101AAA" not in reconciliation_page_b.text
     assert "Movimiento sin match" not in reconciliation_page_b.text
 
+    with testing_session_local() as db:
+        bank_repo_a = BankTransactionRepository(db, user_id=user_a.id)
+        txs_a = bank_repo_a.list_all()
+        assert len(txs_a) == 3
+        posible_tx = next(tx for tx in txs_a if abs(tx.monto - 151.0) < 0.01)
+        pendiente_tx = next(tx for tx in txs_a if abs(tx.monto - 999.0) < 0.01)
+        conciliado_tx = next(tx for tx in txs_a if abs(tx.monto - 100.0) < 0.01)
+        assert posible_tx.match_status == "POSIBLE"
+        assert conciliado_tx.match_status == "CONCILIADO"
+
+    confirm_posible = client.post(f"/reconciliation/confirm/{posible_tx.id}", cookies=cookie_a)
+    assert confirm_posible.status_code == 200
+    assert confirm_posible.json()["transaction"]["match_status"] == "CONCILIADO"
+    assert confirm_posible.json()["transaction"]["origen"] == "MANUAL"
+
+    assign_pending = client.post(
+        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_a.id}",
+        cookies=cookie_a,
+    )
+    assert assign_pending.status_code == 200
+    assert assign_pending.json()["transaction"]["match_status"] == "CONCILIADO"
+    assert assign_pending.json()["transaction"]["matched_invoice_uuid"] == invoice_a.uuid
+    assert assign_pending.json()["transaction"]["origen"] == "MANUAL"
+
+    reject_tx = client.post(f"/reconciliation/reject/{conciliado_tx.id}", cookies=cookie_a)
+    assert reject_tx.status_code == 200
+    assert reject_tx.json()["transaction"]["match_status"] == "PENDIENTE"
+    assert reject_tx.json()["transaction"]["matched_invoice_uuid"] is None
+
+    assign_foreign_invoice = client.post(
+        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_b.id}",
+        cookies=cookie_a,
+    )
+    assert assign_foreign_invoice.status_code == 404
+
+    filtered_pending = client.get("/reconciliation?estado=PENDIENTE", cookies=cookie_a)
+    assert filtered_pending.status_code == 200
+    assert "Movimiento sin match" not in filtered_pending.text
+    assert "Pago Proveedor A AAA010101AAA" in filtered_pending.text
+
+    filtered_manual = client.get("/reconciliation?origen=MANUAL", cookies=cookie_a)
+    assert filtered_manual.status_code == 200
+    assert "Pago Proveedor A AAA010101AAA" in filtered_manual.text
+    assert "Pago Proveedor A2" in filtered_manual.text
+
+    search_provider = client.get("/reconciliation?busqueda=Proveedor%20A2", cookies=cookie_a)
+    assert search_provider.status_code == 200
+    assert "Pago Proveedor A2" in search_provider.text
+
     reconciliation_excel_a = client.get("/api/v1/dashboard/export-excel", cookies=cookie_a)
     assert reconciliation_excel_a.status_code == 200
     reconciliation_book_a = load_workbook(filename=BytesIO(reconciliation_excel_a.content))
@@ -215,6 +265,21 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     )
     assert "Pago Proveedor A AAA010101AAA" not in reconciliation_values_b
     assert "Movimiento sin match" not in reconciliation_values_b
+
+    filtered_reconciliation_export = client.get(
+        "/reconciliation/export-excel?origen=MANUAL&busqueda=Proveedor%20A2",
+        cookies=cookie_a,
+    )
+    assert filtered_reconciliation_export.status_code == 200
+    filtered_reconciliation_book = load_workbook(filename=BytesIO(filtered_reconciliation_export.content))
+    filtered_reconciliation_sheet = filtered_reconciliation_book["CONCILIACION"]
+    filtered_reconciliation_values = "\n".join(
+        "" if cell is None else str(cell)
+        for row in filtered_reconciliation_sheet.iter_rows(values_only=True)
+        for cell in row
+    )
+    assert "Pago Proveedor A2" in filtered_reconciliation_values
+    assert "Movimiento sin match" not in filtered_reconciliation_values
 
     get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b.id}", cookies=cookie_a)
     assert get_b_as_a.status_code == 404

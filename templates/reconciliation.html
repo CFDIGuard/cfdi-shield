@@ -222,6 +222,45 @@
             flex-wrap: wrap;
         }
 
+        .filters-form {
+            display: grid;
+            gap: 10px;
+        }
+
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .field input,
+        .field select {
+            min-height: 40px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            color: var(--ink);
+        }
+
+        .filters-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         input[type="file"] {
             min-height: 40px;
             padding: 8px 10px;
@@ -275,8 +314,45 @@
         .tag.success { background: var(--success-soft); color: var(--success); }
         .tag.warning { background: var(--warning-soft); color: var(--warning); }
         .tag.danger { background: var(--danger-soft); color: var(--danger); }
+        .tag.info { background: var(--primary-soft); color: var(--primary); }
 
         .muted { color: var(--muted); }
+
+        .inline-actions {
+            display: grid;
+            gap: 8px;
+        }
+
+        .inline-actions form,
+        .inline-actions .assign-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .inline-actions select {
+            min-height: 34px;
+            min-width: 280px;
+            padding: 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+        }
+
+        .inline-actions button {
+            min-height: 34px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            border: 0;
+            font: inherit;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .btn-confirm { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+        .btn-reject { background: linear-gradient(135deg, #ef4444, var(--danger)); color: #fff; }
+        .btn-assign { background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); }
 
         .empty {
             padding: 16px 14px;
@@ -322,7 +398,7 @@
             </div>
             <div class="toolbar">
                 <a class="ghost-button" href="/dashboard-web">Volver al dashboard</a>
-                <a class="ghost-button" href="/api/v1/dashboard/export-excel">Exportar Excel</a>
+                <a class="ghost-button" href="{{ reconciliation_export_url }}">Exportar Excel</a>
             </div>
         </section>
 
@@ -336,20 +412,60 @@
         <section class="grid" aria-label="Resumen de conciliacion">
             <article class="metric">
                 <div class="metric-label">Total movimientos</div>
-                <div class="metric-value">{{ summary.total_movimientos }}</div>
+                <div class="metric-value" id="summary-total">{{ summary.total_movimientos }}</div>
             </article>
             <article class="metric">
                 <div class="metric-label">Conciliados</div>
-                <div class="metric-value">{{ summary.conciliados }}</div>
+                <div class="metric-value" id="summary-conciliados">{{ summary.conciliados }}</div>
             </article>
             <article class="metric">
                 <div class="metric-label">Posibles</div>
-                <div class="metric-value">{{ summary.posibles }}</div>
+                <div class="metric-value" id="summary-posibles">{{ summary.posibles }}</div>
             </article>
             <article class="metric">
                 <div class="metric-label">Pendientes</div>
-                <div class="metric-value">{{ summary.pendientes }}</div>
+                <div class="metric-value" id="summary-pendientes">{{ summary.pendientes }}</div>
             </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Filtros de conciliacion</div>
+                    <div class="panel-copy">Filtra en backend por estado, origen o busqueda libre.</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <form class="filters-form" action="/reconciliation" method="get" id="reconciliation-filters-form">
+                    <div class="filters-grid">
+                        <div class="field">
+                            <label for="estado">Estado</label>
+                            <select id="estado" name="estado">
+                                <option value="">Todos</option>
+                                <option value="CONCILIADO" {% if reconciliation_filters.estado == "CONCILIADO" %}selected{% endif %}>CONCILIADO</option>
+                                <option value="POSIBLE" {% if reconciliation_filters.estado == "POSIBLE" %}selected{% endif %}>POSIBLE</option>
+                                <option value="PENDIENTE" {% if reconciliation_filters.estado == "PENDIENTE" %}selected{% endif %}>PENDIENTE</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="origen">Origen</label>
+                            <select id="origen" name="origen">
+                                <option value="">Todos</option>
+                                <option value="AUTOMATICO" {% if reconciliation_filters.origen == "AUTOMATICO" %}selected{% endif %}>AUTOMATICO</option>
+                                <option value="MANUAL" {% if reconciliation_filters.origen == "MANUAL" %}selected{% endif %}>MANUAL</option>
+                            </select>
+                        </div>
+                        <div class="field" style="grid-column: span 2;">
+                            <label for="busqueda">Busqueda libre</label>
+                            <input id="busqueda" name="busqueda" type="text" value="{{ reconciliation_filters.busqueda or '' }}" placeholder="Descripcion, referencia, proveedor o UUID">
+                        </div>
+                    </div>
+                    <div class="filters-actions">
+                        <button class="button-link" type="submit">Aplicar</button>
+                        <a class="ghost-button" href="/reconciliation">Limpiar</a>
+                    </div>
+                </form>
+            </div>
         </section>
 
         <section class="panel">
@@ -367,7 +483,7 @@
             </div>
         </section>
 
-        <section class="panel">
+        <section class="panel" id="reconciliation-results">
             <div class="panel-header">
                 <div>
                     <div class="panel-title">Movimientos conciliados</div>
@@ -383,20 +499,29 @@
                                 <th>Descripcion</th>
                                 <th>Referencia</th>
                                 <th>Monto</th>
+                                <th>Origen</th>
                                 <th>Estado</th>
                                 <th>CFDI sugerido</th>
                                 <th>Score</th>
                                 <th>Motivo</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for row in rows %}
-                                <tr>
+                                <tr data-row-id="{{ row.id }}">
                                     <td>{{ row.fecha or "-" }}</td>
                                     <td>{{ row.descripcion }}</td>
                                     <td>{{ row.referencia or "-" }}</td>
                                     <td>${{ "{:,.2f}".format(row.monto) }}</td>
-                                    <td>
+                                    <td class="origin-cell">
+                                        {% if row.origen == "MANUAL" %}
+                                            <span class="tag info">MANUAL</span>
+                                        {% else %}
+                                            <span class="tag info">AUTOMATICO</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="status-cell">
                                         {% if row.match_status == "CONCILIADO" %}
                                             <span class="tag success">CONCILIADO</span>
                                         {% elif row.match_status == "POSIBLE" %}
@@ -405,7 +530,7 @@
                                             <span class="tag danger">PENDIENTE</span>
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="suggested-cell">
                                         {% if row.matched_invoice_uuid %}
                                             <strong>{{ row.matched_invoice_provider or "-" }}</strong><br>
                                             <span class="muted">{{ row.matched_invoice_uuid }}</span>
@@ -413,8 +538,29 @@
                                             <span class="muted">Sin sugerencia</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ "{:,.2f}".format(row.match_score) }}</td>
-                                    <td>{{ row.match_reason or "-" }}</td>
+                                    <td class="score-cell">{{ "{:,.2f}".format(row.match_score) }}</td>
+                                    <td class="reason-cell">{{ row.match_reason or "-" }}</td>
+                                    <td>
+                                        <div class="inline-actions">
+                                            {% if row.match_status == "POSIBLE" and row.matched_invoice_id %}
+                                                <form class="js-action-form" action="/reconciliation/confirm/{{ row.id }}" method="post">
+                                                    <button class="btn-confirm" type="submit">Confirmar</button>
+                                                </form>
+                                            {% endif %}
+                                            <div class="assign-row">
+                                                <select class="invoice-select">
+                                                    <option value="">Cambiar CFDI...</option>
+                                                    {% for option in invoice_options %}
+                                                        <option value="{{ option.id }}" {% if row.matched_invoice_id == option.id %}selected{% endif %}>{{ option.label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button class="btn-assign js-assign-button" type="button" data-transaction-id="{{ row.id }}">Asignar</button>
+                                            </div>
+                                            <form class="js-action-form" action="/reconciliation/reject/{{ row.id }}" method="post">
+                                                <button class="btn-reject" type="submit">No conciliable</button>
+                                            </form>
+                                        </div>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         </tbody>
@@ -425,5 +571,131 @@
             {% endif %}
         </section>
     </main>
+    <script>
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function statusBadge(status) {
+            if (status === "CONCILIADO") return '<span class="tag success">CONCILIADO</span>';
+            if (status === "POSIBLE") return '<span class="tag warning">POSIBLE</span>';
+            return '<span class="tag danger">PENDIENTE</span>';
+        }
+
+        function originBadge(origin) {
+            return `<span class="tag info">${escapeHtml(origin || "AUTOMATICO")}</span>`;
+        }
+
+        function suggestedHtml(transaction) {
+            if (!transaction.matched_invoice_uuid) {
+                return '<span class="muted">Sin sugerencia</span>';
+            }
+            return `<strong>${escapeHtml(transaction.matched_invoice_provider || "-")}</strong><br><span class="muted">${escapeHtml(transaction.matched_invoice_uuid)}</span>`;
+        }
+
+        function updateSummary(summary) {
+            document.getElementById("summary-total").textContent = summary.total_movimientos;
+            document.getElementById("summary-conciliados").textContent = summary.conciliados;
+            document.getElementById("summary-posibles").textContent = summary.posibles;
+            document.getElementById("summary-pendientes").textContent = summary.pendientes;
+        }
+
+        function activeFilters() {
+            return {
+                estado: document.getElementById("estado")?.value || "",
+                origen: document.getElementById("origen")?.value || "",
+                busqueda: document.getElementById("busqueda")?.value.trim() || "",
+            };
+        }
+
+        function buildActionUrl(url) {
+            const params = new URLSearchParams();
+            const filters = activeFilters();
+            if (filters.estado) params.set("estado", filters.estado);
+            if (filters.origen) params.set("origen", filters.origen);
+            if (filters.busqueda) params.set("busqueda", filters.busqueda);
+            const suffix = params.toString();
+            return suffix ? `${url}?${suffix}` : url;
+        }
+
+        function passesActiveFilters(transaction) {
+            const filters = activeFilters();
+            if (filters.estado && (transaction.match_status || "").toUpperCase() !== filters.estado.toUpperCase()) {
+                return false;
+            }
+            if (filters.origen && (transaction.origen || "").toUpperCase() !== filters.origen.toUpperCase()) {
+                return false;
+            }
+            if (filters.busqueda) {
+                const haystack = [
+                    transaction.descripcion,
+                    transaction.referencia,
+                    transaction.match_reason,
+                    transaction.matched_invoice_provider,
+                    transaction.matched_invoice_uuid,
+                ].join(" ").toUpperCase();
+                if (!haystack.includes(filters.busqueda.toUpperCase())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function updateRow(transaction) {
+            const row = document.querySelector(`tr[data-row-id="${transaction.id}"]`);
+            if (!row) return;
+            row.querySelector(".origin-cell").innerHTML = originBadge(transaction.origen);
+            row.querySelector(".status-cell").innerHTML = statusBadge(transaction.match_status);
+            row.querySelector(".suggested-cell").innerHTML = suggestedHtml(transaction);
+            row.querySelector(".score-cell").textContent = Number(transaction.match_score || 0).toFixed(2);
+            row.querySelector(".reason-cell").textContent = transaction.match_reason || "-";
+            row.style.display = passesActiveFilters(transaction) ? "" : "none";
+        }
+
+        async function postAction(url) {
+            const response = await fetch(buildActionUrl(url), {
+                method: "POST",
+                headers: { "X-Requested-With": "fetch" }
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.detail || "No fue posible completar la accion.");
+            }
+            updateRow(payload.transaction);
+            updateSummary(payload.summary);
+        }
+
+        document.querySelectorAll(".js-action-form").forEach((form) => {
+            form.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                try {
+                    await postAction(form.action);
+                } catch (error) {
+                    alert(error.message);
+                }
+            });
+        });
+
+        document.querySelectorAll(".js-assign-button").forEach((button) => {
+            button.addEventListener("click", async () => {
+                const row = button.closest("tr");
+                const select = row.querySelector(".invoice-select");
+                if (!select.value) {
+                    alert("Selecciona un CFDI para asignar.");
+                    return;
+                }
+                try {
+                    await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`);
+                } catch (error) {
+                    alert(error.message);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
