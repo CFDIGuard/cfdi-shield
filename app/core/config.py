@@ -1,5 +1,32 @@
+import sys
+from pathlib import Path
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _application_root() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parents[2]
+
+
+def _absolute_sqlite_url(path: Path) -> str:
+    return f"sqlite:///{path.resolve().as_posix()}"
+
+
+def _resolve_sqlite_path(value: str) -> Path | None:
+    if not value.startswith("sqlite"):
+        return None
+    if value.startswith("sqlite:///./"):
+        return (_application_root() / value.removeprefix("sqlite:///./")).resolve()
+    if value.startswith("sqlite:///"):
+        raw_path = value.removeprefix("sqlite:///")
+        candidate = Path(raw_path)
+        if candidate.is_absolute():
+            return candidate.resolve()
+        return (_application_root() / candidate).resolve()
+    return None
 
 
 class Settings(BaseSettings):
@@ -60,11 +87,14 @@ class Settings(BaseSettings):
     @classmethod
     def normalize_database_url(cls, value: str | None) -> str:
         if not value:
-            return "sqlite:///./facturas.db"
+            value = "sqlite:///./facturas.db"
         if value.startswith("postgres://"):
             return value.replace("postgres://", "postgresql+psycopg://", 1)
         if value.startswith("postgresql://"):
             return value.replace("postgresql://", "postgresql+psycopg://", 1)
+        sqlite_path = _resolve_sqlite_path(value)
+        if sqlite_path is not None:
+            return _absolute_sqlite_url(sqlite_path)
         return value
 
     @property
@@ -74,6 +104,10 @@ class Settings(BaseSettings):
             for email in self.beta_allowed_emails_raw.split(",")
             if email.strip()
         }
+
+    @property
+    def sqlite_database_path(self) -> Path | None:
+        return _resolve_sqlite_path(self.database_url)
 
 
 settings = Settings()

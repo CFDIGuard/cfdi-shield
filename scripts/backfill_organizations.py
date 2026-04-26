@@ -6,7 +6,6 @@ import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import unquote, urlparse
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -34,21 +33,6 @@ class BackfillResult:
     invoices_updated: int = 0
     payment_complements_updated: int = 0
     bank_transactions_updated: int = 0
-
-
-def _resolve_sqlite_path(database_url: str) -> Path | None:
-    if not database_url.startswith("sqlite"):
-        return None
-
-    if database_url.startswith("sqlite:///./"):
-        return (ROOT / database_url.removeprefix("sqlite:///./")).resolve()
-    if database_url.startswith("sqlite:///"):
-        return Path(database_url.removeprefix("sqlite:///")).resolve()
-
-    parsed = urlparse(database_url)
-    if not parsed.path:
-        return None
-    return Path(unquote(parsed.path)).resolve()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -203,7 +187,7 @@ def _run(user_id: int | None, dry_run: bool) -> BackfillResult:
     result = BackfillResult()
 
     logger.info("DATABASE_URL efectiva detectada | url=%s", settings.database_url)
-    sqlite_path = _resolve_sqlite_path(settings.database_url)
+    sqlite_path = settings.sqlite_database_path
     if sqlite_path is not None:
         logger.info("Base SQLite detectada | path=%s", sqlite_path)
     logger.info("Engine SQLAlchemy en uso | url=%s", str(engine.url))
