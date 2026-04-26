@@ -48,6 +48,19 @@ def procesar_factura(
     data = None
     try:
         data = parse_cfdi_xml(file_bytes, filename=filename)
+        if str(data.tipo_comprobante or "").upper() == "P":
+            logger.info(
+                "Payment invoice detected | payment_invoice_uuid=%s | complements=%s",
+                mask_uuid(data.uuid),
+                len(data.payment_complements),
+            )
+            for payment in data.payment_complements:
+                logger.info(
+                    "Payment complement parsed | payment_invoice_uuid=%s | related_invoice_uuid=%s | importe_pagado=%.2f",
+                    mask_uuid(data.uuid),
+                    mask_uuid(payment.related_invoice_uuid),
+                    float(payment.importe_pagado or 0),
+                )
     except Exception as exc:
         logger.exception(
             "Invoice processing failed | stage=parse_xml | filename=%s | uuid=%s | error=%s",

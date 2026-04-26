@@ -107,6 +107,11 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
             )
         ]
         repo_a.create(payment_a_payload)
+        refreshed_invoice_a = repo_a.get_by_id(invoice_a.id)
+        assert refreshed_invoice_a is not None
+        assert refreshed_invoice_a.estado_pago == "PAGADA"
+        assert float(refreshed_invoice_a.total_pagado or 0) == 100.0
+        assert float(refreshed_invoice_a.saldo_pendiente or 0) == 0.0
 
         invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
         invoice_b_payload.estatus_sat = "SIN_VALIDACION"
@@ -123,10 +128,17 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert response_a.status_code == 200
     workbook_a = load_workbook(filename=BytesIO(response_a.content))
     control_a = workbook_a["CONTROL"]
+    control_headers_a = [cell.value for cell in next(control_a.iter_rows(max_row=1))]
+    assert "Total pagado" in control_headers_a
+    assert "Saldo pendiente" in control_headers_a
+    assert "Estado pago" in control_headers_a
     values_a = "\n".join("" if cell is None else str(cell) for row in control_a.iter_rows(values_only=True) for cell in row)
     assert "Proveedor A" in values_a
     assert "Proveedor B" not in values_a
     assert "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB" not in values_a
+    resumen_a = workbook_a["RESUMEN"]
+    resumen_values_a = {row[0]: row[1] for row in resumen_a.iter_rows(values_only=True) if row and row[0]}
+    assert resumen_values_a.get("Facturas pagadas") == 1
 
     response_b = client.get("/api/v1/dashboard/export-excel", cookies=cookie_b)
     assert response_b.status_code == 200

@@ -276,6 +276,9 @@ def generate_excel_report(
             "Tipo de cambio usado",
             "Fuente tipo de cambio",
             "Total MXN",
+            "Total pagado",
+            "Saldo pendiente",
+            "Estado pago",
             "IVA trasladado",
             "IVA retenido",
             "ISR retenido",
@@ -296,6 +299,9 @@ def generate_excel_report(
                 row.get("tipo_cambio_usado"),
                 row.get("fuente_tipo_cambio"),
                 row.get("total_mxn"),
+                row.get("total_pagado"),
+                row.get("saldo_pendiente"),
+                row.get("estado_pago"),
                 row.get("iva_trasladado"),
                 row.get("iva_retenido"),
                 row.get("isr_retenido"),
@@ -311,14 +317,14 @@ def generate_excel_report(
             ws_control["D"][1:]
             + ws_control["E"][1:]
             + ws_control["G"][1:]
-            + ws_control["K"][1:]
-            + ws_control["L"][1:]
-            + ws_control["M"][1:]
             + ws_control["N"][1:]
             + ws_control["O"][1:]
+            + ws_control["P"][1:]
+            + ws_control["Q"][1:]
+            + ws_control["R"][1:]
         ):
             cell.number_format = DECIMAL_FORMAT
-        for cell in ws_control["J"][1:]:
+        for cell in ws_control["J"][1:] + ws_control["K"][1:] + ws_control["L"][1:]:
             cell.number_format = MXN_FORMAT
 
         ws_proveedores = wb.create_sheet("PROVEEDORES")

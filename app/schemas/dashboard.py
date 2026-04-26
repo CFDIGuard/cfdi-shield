@@ -109,6 +109,9 @@ class ControlRow(BaseModel):
     fecha_tipo_cambio: str | None = None
     total_mxn: float | None = None
     metodo_pago: str | None = None
+    total_pagado: float = 0
+    saldo_pendiente: float = 0
+    estado_pago: str | None = None
     estatus_sat: str
     riesgo: str
     detalle_riesgo: str | None = None

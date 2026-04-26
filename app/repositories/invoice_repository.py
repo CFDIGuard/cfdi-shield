@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import logging
 
 from sqlalchemy import Numeric, String, cast, distinct, func, select
 from sqlalchemy.orm import Session
@@ -11,6 +12,9 @@ from app.models.sat_validation_cache import SatValidationCache
 from app.schemas.invoice import InvoiceCreate, InvoiceFilters
 from app.schemas.payment_complement import PaymentComplementCreate
 from app.services.reports_service import build_dashboard_summary, build_reports_bundle
+
+
+logger = logging.getLogger(__name__)
 
 
 class InvoiceRepository:
@@ -67,6 +71,8 @@ class InvoiceRepository:
         return statement.where(PaymentComplement.user_id == self.user_id)
 
     def _invoice_reference_total(self, invoice: Invoice) -> float:
+        if invoice.total_mxn is not None:
+            return float(invoice.total_mxn or 0)
         if invoice.total_original:
             return float(invoice.total_original or 0)
         return float(invoice.total or 0)
@@ -87,6 +93,13 @@ class InvoiceRepository:
                 missing_related.append("(sin UUID relacionado)")
                 continue
             related_invoice = self.get_by_uuid(related_invoice_uuid)
+            logger.info(
+                "Processing payment complement relation | payment_invoice_uuid=%s | related_invoice_uuid=%s | importe_pagado=%.2f | invoice_found=%s",
+                invoice.uuid,
+                related_invoice_uuid,
+                float(row.get("importe_pagado", 0) or 0),
+                "yes" if related_invoice is not None else "no",
+            )
             if related_invoice is None:
                 missing_related.append(related_invoice_uuid)
                 continue
@@ -115,21 +128,56 @@ class InvoiceRepository:
 
         for item in normalized_rows:
             self.db.add(PaymentComplement(**item.model_dump()))
+            logger.info(
+                "Payment complement persisted | payment_invoice_uuid=%s | related_invoice_uuid=%s | importe_pagado=%.2f",
+                invoice.uuid,
+                item.related_invoice_uuid,
+                float(item.importe_pagado or 0),
+            )
 
-    def _sync_invoice_payment_status(self, invoice: Invoice) -> None:
+    def recalculate_payment_status(self, invoice_uuid: str, user_id: int | None = None) -> Invoice | None:
+        normalized_uuid = str(invoice_uuid or "").strip().upper()
+        if not normalized_uuid:
+            return None
+
+        scoped_user_id = self.user_id if self.user_id is not None else user_id
+        statement = select(Invoice).where(func.upper(Invoice.uuid) == normalized_uuid)
+        if scoped_user_id is not None:
+            statement = statement.where(Invoice.user_id == scoped_user_id)
+        invoice = self.db.execute(statement).scalar_one_or_none()
+        if invoice is None:
+            logger.info(
+                "Payment status recalculation skipped | related_invoice_uuid=%s | invoice_found=no",
+                normalized_uuid,
+            )
+            return None
+
         if str(invoice.tipo_comprobante or "").upper() == "P":
             invoice.total_pagado = 0
             invoice.saldo_pendiente = 0
             invoice.estado_pago = "SIN_RELACION"
-            return
+            self.db.flush()
+            logger.info(
+                "Payment status recalculated | invoice_uuid=%s | total_pagado=0.00 | saldo_pendiente=0.00 | estado_pago=%s",
+                invoice.uuid,
+                invoice.estado_pago,
+            )
+            return invoice
 
         complements = self.list_payment_complements_for_invoice_uuid(invoice.uuid)
         invoice_total = self._invoice_reference_total(invoice)
         if not complements:
             invoice.total_pagado = 0
             invoice.saldo_pendiente = round(invoice_total, 2)
-            invoice.estado_pago = "PENDIENTE" if str(invoice.metodo_pago or "").upper() == "PPD" else "SIN_RELACION"
-            return
+            invoice.estado_pago = "PENDIENTE"
+            self.db.flush()
+            logger.info(
+                "Payment status recalculated | invoice_uuid=%s | total_pagado=0.00 | saldo_pendiente=%.2f | estado_pago=%s",
+                invoice.uuid,
+                invoice.saldo_pendiente or 0,
+                invoice.estado_pago,
+            )
+            return invoice
 
         latest_complement = sorted(
             complements,
@@ -147,6 +195,18 @@ class InvoiceRepository:
         invoice.total_pagado = total_pagado
         invoice.saldo_pendiente = max(saldo_pendiente, 0)
         invoice.estado_pago = estado_pago
+        self.db.flush()
+        logger.info(
+            "Payment status recalculated | invoice_uuid=%s | total_pagado=%.2f | saldo_pendiente=%.2f | estado_pago=%s",
+            invoice.uuid,
+            invoice.total_pagado or 0,
+            invoice.saldo_pendiente or 0,
+            invoice.estado_pago,
+        )
+        return invoice
+
+    def _sync_invoice_payment_status(self, invoice: Invoice) -> None:
+        self.recalculate_payment_status(invoice.uuid, user_id=invoice.user_id)
 
     def list_payment_complements(self) -> list[PaymentComplement]:
         statement = self._scope_payment_statement(select(PaymentComplement)).order_by(
@@ -158,16 +218,17 @@ class InvoiceRepository:
         if not invoices:
             return []
         invoice_ids = [invoice.id for invoice in invoices]
-        invoice_uuids = [invoice.uuid for invoice in invoices if invoice.uuid]
+        invoice_uuids = [str(invoice.uuid).strip().upper() for invoice in invoices if invoice.uuid]
         statement = self._scope_payment_statement(select(PaymentComplement)).where(
             (PaymentComplement.payment_invoice_id.in_(invoice_ids))
-            | (PaymentComplement.related_invoice_uuid.in_(invoice_uuids))
+            | (func.upper(func.coalesce(PaymentComplement.related_invoice_uuid, "")).in_(invoice_uuids))
         ).order_by(PaymentComplement.created_at.desc())
         return list(self.db.execute(statement).scalars().all())
 
     def list_payment_complements_for_invoice_uuid(self, related_invoice_uuid: str) -> list[PaymentComplement]:
+        normalized_uuid = str(related_invoice_uuid or "").strip().upper()
         statement = self._scope_payment_statement(select(PaymentComplement)).where(
-            PaymentComplement.related_invoice_uuid == related_invoice_uuid
+            func.upper(func.coalesce(PaymentComplement.related_invoice_uuid, "")) == normalized_uuid
         )
         return list(self.db.execute(statement).scalars().all())
 
@@ -186,9 +247,7 @@ class InvoiceRepository:
                 related_invoice_uuid = str(item.get("related_invoice_uuid") or "").strip().upper()
                 if not related_invoice_uuid:
                     continue
-                related_invoice = self.get_by_uuid(related_invoice_uuid)
-                if related_invoice is not None:
-                    self._sync_invoice_payment_status(related_invoice)
+                self.recalculate_payment_status(related_invoice_uuid, user_id=invoice.user_id)
         else:
             self._sync_invoice_payment_status(invoice)
         self.db.commit()
@@ -200,7 +259,8 @@ class InvoiceRepository:
         return self.db.execute(statement).scalar_one_or_none()
 
     def get_by_uuid(self, uuid: str) -> Invoice | None:
-        statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.uuid == uuid)
+        normalized_uuid = str(uuid or "").strip().upper()
+        statement = self._scope_invoice_statement(select(Invoice)).where(func.upper(Invoice.uuid) == normalized_uuid)
         return self.db.execute(statement).scalar_one_or_none()
 
     def get_recent_sat_validation(self, uuid: str, max_age_seconds: int) -> SatValidationCache | None:
