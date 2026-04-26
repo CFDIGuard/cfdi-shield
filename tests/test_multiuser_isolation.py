@@ -87,7 +87,7 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         invoice_a2_payload.estatus_sat = "VIGENTE"
         invoice_a2_payload.riesgo = "BAJO"
         invoice_a2_payload.detalle_riesgo = ""
-        repo_a.create(invoice_a2_payload)
+        invoice_a2 = repo_a.create(invoice_a2_payload)
 
         payment_a_payload = _make_invoice(user_a.id, "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA", 0.0, "Proveedor A")
         payment_a_payload.tipo_comprobante = "P"
@@ -136,9 +136,17 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Proveedor A" in values_a
     assert "Proveedor B" not in values_a
     assert "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB" not in values_a
+    assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" not in values_a
     resumen_a = workbook_a["RESUMEN"]
     resumen_values_a = {row[0]: row[1] for row in resumen_a.iter_rows(values_only=True) if row and row[0]}
     assert resumen_values_a.get("Facturas pagadas") == 1
+
+    list_a = client.get("/api/v1/invoices", cookies=cookie_a)
+    assert list_a.status_code == 200
+    listed_uuids_a = {item["uuid"] for item in list_a.json()}
+    assert "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA" in listed_uuids_a
+    assert "AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA" in listed_uuids_a
+    assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" not in listed_uuids_a
 
     response_b = client.get("/api/v1/dashboard/export-excel", cookies=cookie_b)
     assert response_b.status_code == 200
@@ -341,6 +349,25 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     )
     assert delete_b_as_a.status_code == 303
 
+    delete_a2 = client.post(
+        f"/invoices/{invoice_a2.id}/delete",
+        cookies=cookie_a,
+        follow_redirects=False,
+    )
+    assert delete_a2.status_code == 303
+
+    delete_a_with_complement = client.post(
+        f"/invoices/{invoice_a.id}/delete",
+        cookies=cookie_a,
+        follow_redirects=False,
+    )
+    assert delete_a_with_complement.status_code == 303
+    assert "No%20puedes%20eliminar%20esta%20factura" in delete_a_with_complement.headers["location"]
+
     with testing_session_local() as db:
         remaining_b = InvoiceRepository(db, user_id=user_b.id).get_by_id(invoice_b.id)
         assert remaining_b is not None
+        deleted_a2 = InvoiceRepository(db, user_id=user_a.id).get_by_uuid("AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA")
+        assert deleted_a2 is None
+        protected_a = InvoiceRepository(db, user_id=user_a.id).get_by_id(invoice_a.id)
+        assert protected_a is not None

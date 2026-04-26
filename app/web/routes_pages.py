@@ -814,7 +814,33 @@ def delete_invoice(
         invoice.id,
         mask_uuid(invoice.uuid),
     )
-    repository.delete(invoice)
+    try:
+        repository.delete(invoice)
+    except ValueError as exc:
+        db.rollback()
+        logger.warning(
+            "Invoice delete blocked | user=%s | invoice_id=%s | uuid=%s | reason=%s",
+            mask_username(current_user.username),
+            invoice.id,
+            mask_uuid(invoice.uuid),
+            str(exc),
+        )
+        return RedirectResponse(
+            url=web_url("/dashboard-web", error=str(exc)),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.exception(
+            "Invoice delete failed | user=%s | invoice_id=%s | uuid=%s",
+            mask_username(current_user.username),
+            invoice.id,
+            mask_uuid(invoice.uuid),
+        )
+        return RedirectResponse(
+            url=web_url("/dashboard-web", error="No fue posible eliminar la factura en este momento."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     return RedirectResponse(
         url=web_url("/dashboard-web", message="Factura eliminada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,

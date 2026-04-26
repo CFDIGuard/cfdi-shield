@@ -115,7 +115,7 @@ def get_invoice_by_uuid(
     current_user: User = Depends(get_api_current_user),
 ) -> InvoiceResponse:
     invoice = InvoiceRepository(db, user_id=current_user.id).get_by_uuid(uuid)
-    if invoice is None:
+    if invoice is None or str(invoice.tipo_comprobante or "").upper() == "P":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")
     return invoice
 
@@ -127,7 +127,7 @@ def get_invoice(
     current_user: User = Depends(get_api_current_user),
 ) -> InvoiceResponse:
     invoice = InvoiceRepository(db, user_id=current_user.id).get_by_id(invoice_id)
-    if invoice is None:
+    if invoice is None or str(invoice.tipo_comprobante or "").upper() == "P":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")
     return invoice
 
@@ -140,7 +140,7 @@ def refresh_sat_status(
 ) -> InvoiceResponse:
     repository = InvoiceRepository(db, user_id=current_user.id)
     invoice = repository.get_by_id(invoice_id)
-    if invoice is None:
+    if invoice is None or str(invoice.tipo_comprobante or "").upper() == "P":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factura no encontrada.")
 
     sat_validator = get_sat_validator()

@@ -27,6 +27,11 @@ class InvoiceRepository:
             return statement
         return statement.where(Invoice.user_id == self.user_id)
 
+    def _apply_visibility(self, statement, include_payment_invoices: bool = False):
+        if include_payment_invoices:
+            return statement
+        return statement.where(func.upper(func.coalesce(Invoice.tipo_comprobante, "I")) != "P")
+
     def _apply_filters(self, statement, filters: InvoiceFilters | None):
         if filters is None:
             return statement
@@ -288,8 +293,15 @@ class InvoiceRepository:
         self.db.flush()
         return cache_entry
 
-    def list_filtered(self, filters: InvoiceFilters | None = None, skip: int = 0, limit: int | None = 100) -> list[Invoice]:
+    def list_filtered(
+        self,
+        filters: InvoiceFilters | None = None,
+        skip: int = 0,
+        limit: int | None = 100,
+        include_payment_invoices: bool = False,
+    ) -> list[Invoice]:
         statement = self._scope_invoice_statement(select(Invoice))
+        statement = self._apply_visibility(statement, include_payment_invoices=include_payment_invoices)
         statement = self._apply_filters(statement, filters)
         statement = statement.order_by(Invoice.created_at.desc()).offset(skip)
         if limit is not None:
@@ -299,8 +311,8 @@ class InvoiceRepository:
     def list(self, skip: int = 0, limit: int = 100, filters: InvoiceFilters | None = None) -> list[Invoice]:
         return self.list_filtered(filters=filters, skip=skip, limit=limit)
 
-    def list_all(self, filters: InvoiceFilters | None = None) -> list[Invoice]:
-        return self.list_filtered(filters=filters, skip=0, limit=None)
+    def list_all(self, filters: InvoiceFilters | None = None, include_payment_invoices: bool = False) -> list[Invoice]:
+        return self.list_filtered(filters=filters, skip=0, limit=None, include_payment_invoices=include_payment_invoices)
 
     def exists_same_rfc_total(self, rfc_emisor: str, total: float) -> bool:
         statement = self._scope_invoice_statement(select(func.count(Invoice.id))).where(
@@ -350,41 +362,87 @@ class InvoiceRepository:
         return invoice
 
     def delete(self, invoice: Invoice) -> None:
-        if str(invoice.tipo_comprobante or "").upper() == "P":
-            related_uuids = [
-                related_uuid
-                for related_uuid in {
-                    item.related_invoice_uuid
-                    for item in self.list_payment_complements()
-                    if item.payment_invoice_id == invoice.id
-                }
-                if related_uuid
-            ]
-            statement = self._scope_payment_statement(select(PaymentComplement)).where(
-                PaymentComplement.payment_invoice_id == invoice.id
+        related_as_payment_statement = self._scope_payment_statement(select(PaymentComplement)).where(
+            PaymentComplement.payment_invoice_id == invoice.id
+        )
+        related_as_base_statement = self._scope_payment_statement(select(PaymentComplement)).where(
+            func.upper(func.coalesce(PaymentComplement.related_invoice_uuid, "")) == str(invoice.uuid or "").strip().upper()
+        )
+        related_as_payment = list(self.db.execute(related_as_payment_statement).scalars().all())
+        related_as_base = list(self.db.execute(related_as_base_statement).scalars().all())
+
+        logger.info(
+            "Deleting invoice attempt | invoice_id=%s | invoice_uuid=%s | user_id=%s | payment_complements_as_payment=%s | payment_complements_as_base=%s",
+            invoice.id,
+            invoice.uuid,
+            invoice.user_id,
+            len(related_as_payment),
+            len(related_as_base),
+        )
+
+        if str(invoice.tipo_comprobante or "").upper() != "P" and related_as_base:
+            raise ValueError(
+                "No puedes eliminar esta factura porque tiene complementos de pago relacionados. Elimina primero los complementos o usa recalculo."
             )
-            for item in self.db.execute(statement).scalars().all():
-                self.db.delete(item)
-            self.db.delete(invoice)
-            self.db.flush()
-            for related_uuid in related_uuids:
-                related_invoice = self.get_by_uuid(related_uuid)
-                if related_invoice is not None:
-                    self._sync_invoice_payment_status(related_invoice)
+
+        try:
+            from app.models.bank_transaction import BankTransaction
+
+            bank_transactions = list(
+                self.db.execute(
+                    select(BankTransaction).where(
+                        BankTransaction.user_id == invoice.user_id,
+                        BankTransaction.matched_invoice_id == invoice.id,
+                    )
+                ).scalars().all()
+            )
+            for movement in bank_transactions:
+                movement.matched_invoice_id = None
+                if str(movement.match_status or "").upper() == "CONCILIADO":
+                    movement.match_status = "PENDIENTE"
+                movement.match_reason = "Factura relacionada eliminada"
+        except Exception as exc:
+            logger.exception(
+                "Failed to detach bank reconciliations before invoice delete | invoice_id=%s | uuid=%s | user_id=%s",
+                invoice.id,
+                invoice.uuid,
+                invoice.user_id,
+            )
+            raise exc
+
+        try:
+            if str(invoice.tipo_comprobante or "").upper() == "P":
+                related_uuids = [item.related_invoice_uuid for item in related_as_payment if item.related_invoice_uuid]
+                for item in related_as_payment:
+                    self.db.delete(item)
+                self.db.delete(invoice)
+                self.db.flush()
+                for related_uuid in sorted(set(related_uuids)):
+                    self.recalculate_payment_status(related_uuid, user_id=invoice.user_id)
+            else:
+                self.db.delete(invoice)
+                self.db.flush()
             self.db.commit()
-            return
-        self.db.delete(invoice)
-        self.db.commit()
+        except Exception:
+            self.db.rollback()
+            logger.exception(
+                "Invoice delete failed | invoice_id=%s | uuid=%s | user_id=%s | payment_complements=%s",
+                invoice.id,
+                invoice.uuid,
+                invoice.user_id,
+                len(related_as_payment) + len(related_as_base),
+            )
+            raise
 
     def summary(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
-        invoices = self.list_all(filters=filters)
+        invoices = self.list_all(filters=filters, include_payment_invoices=True)
         return build_dashboard_summary(
             invoices,
             self.list_payment_complements_for_invoices(invoices),
         )
 
     def reports(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
-        invoices = self.list_all(filters=filters)
+        invoices = self.list_all(filters=filters, include_payment_invoices=True)
         return build_reports_bundle(
             invoices,
             self.list_payment_complements_for_invoices(invoices),

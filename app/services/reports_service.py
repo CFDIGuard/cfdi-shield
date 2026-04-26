@@ -30,6 +30,10 @@ def _non_payment_invoices(invoices: list[Invoice]) -> list[Invoice]:
     return [invoice for invoice in invoices if str(invoice.tipo_comprobante or "").upper() != "P"]
 
 
+def _visible_invoices(invoices: list[Invoice]) -> list[Invoice]:
+    return _non_payment_invoices(invoices)
+
+
 def _build_payment_complements_report(
     invoices: list[Invoice],
     payment_complements: list[PaymentComplement],
@@ -271,29 +275,30 @@ def build_reports_bundle(
     payment_complements: list[PaymentComplement] | None = None,
 ) -> dict[str, object]:
     payment_complements = payment_complements or []
+    visible_invoices = _visible_invoices(invoices)
     payment_status_invoices = _non_payment_invoices(invoices)
-    resumen = _build_resumen_report(invoices)
-    control = _build_control_report(invoices)
-    proveedores = _build_provider_report(invoices)
-    riesgos = _build_risk_report(invoices)
-    fiscal_risk_reports = build_fiscal_risk_reports(invoices)
+    resumen = _build_resumen_report(visible_invoices)
+    control = _build_control_report(visible_invoices)
+    proveedores = _build_provider_report(visible_invoices)
+    riesgos = _build_risk_report(visible_invoices)
+    fiscal_risk_reports = build_fiscal_risk_reports(visible_invoices)
     complementos_pago = _build_payment_complements_report(invoices, payment_complements)
 
-    total_facturado = float(sum(_mxn_amount(invoice) for invoice in invoices))
-    total_iva = float(sum(_iva_trasladado(invoice) for invoice in invoices))
-    total_iva_retenido = float(sum(invoice.iva_retenido or 0 for invoice in invoices))
-    total_isr_retenido = float(sum(invoice.isr_retenido or 0 for invoice in invoices))
-    total_impuestos_netos = float(sum((invoice.total_impuestos_trasladados or 0) - (invoice.total_impuestos_retenidos or 0) for invoice in invoices))
-    facturas = len(invoices)
-    vigentes = sum(1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "VIGENTE")
-    canceladas = sum(1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "CANCELADO")
+    total_facturado = float(sum(_mxn_amount(invoice) for invoice in visible_invoices))
+    total_iva = float(sum(_iva_trasladado(invoice) for invoice in visible_invoices))
+    total_iva_retenido = float(sum(invoice.iva_retenido or 0 for invoice in visible_invoices))
+    total_isr_retenido = float(sum(invoice.isr_retenido or 0 for invoice in visible_invoices))
+    total_impuestos_netos = float(sum((invoice.total_impuestos_trasladados or 0) - (invoice.total_impuestos_retenidos or 0) for invoice in visible_invoices))
+    facturas = len(visible_invoices)
+    vigentes = sum(1 for invoice in visible_invoices if str(invoice.estatus_sat or "").upper() == "VIGENTE")
+    canceladas = sum(1 for invoice in visible_invoices if str(invoice.estatus_sat or "").upper() == "CANCELADO")
     sin_validacion_sat = sum(
-        1 for invoice in invoices if str(invoice.estatus_sat or "").upper() == "SIN_VALIDACION"
+        1 for invoice in visible_invoices if str(invoice.estatus_sat or "").upper() == "SIN_VALIDACION"
     )
-    riesgo_alto = sum(1 for invoice in invoices if str(invoice.riesgo or "").upper() == "ALTO")
-    riesgo_medio = sum(1 for invoice in invoices if str(invoice.riesgo or "").upper() == "MEDIO")
-    riesgo_bajo = sum(1 for invoice in invoices if str(invoice.riesgo or "").upper() == "BAJO")
-    proveedores_unicos = len({invoice.rfc_emisor for invoice in invoices if invoice.rfc_emisor})
+    riesgo_alto = sum(1 for invoice in visible_invoices if str(invoice.riesgo or "").upper() == "ALTO")
+    riesgo_medio = sum(1 for invoice in visible_invoices if str(invoice.riesgo or "").upper() == "MEDIO")
+    riesgo_bajo = sum(1 for invoice in visible_invoices if str(invoice.riesgo or "").upper() == "BAJO")
+    proveedores_unicos = len({invoice.rfc_emisor for invoice in visible_invoices if invoice.rfc_emisor})
     facturas_pagadas = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PAGADA")
     facturas_parciales = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PARCIAL")
     facturas_pendientes = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PENDIENTE")
