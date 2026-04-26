@@ -1,15 +1,15 @@
-import os
 import secrets
 from collections.abc import Callable
 
 from fastapi import HTTPException, Request, status
 
+from app.core.config import settings
+
 CSRF_SESSION_KEY = "csrf_token"
-APP_SECRET_KEY = os.getenv("APP_SECRET_KEY")
+APP_SECRET_KEY = settings.session_secret_key
 
 if not APP_SECRET_KEY:
-    # fallback only for local/dev environments
-    APP_SECRET_KEY = secrets.token_urlsafe(48)
+    raise RuntimeError("APP_SECRET_KEY must be set in environment or .env")
 
 
 def get_csrf_token(request: Request) -> str:
@@ -40,7 +40,7 @@ def csrf_context_processor(request: Request) -> dict[str, Callable[[], str]]:
 
 
 async def require_csrf(request: Request) -> None:
-    if request.method.upper() in ("GET", "HEAD", "OPTIONS", "TRACE"):
+    if request.method in ("GET", "HEAD", "OPTIONS", "TRACE"):
         return
 
     form = await request.form()

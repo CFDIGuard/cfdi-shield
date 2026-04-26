@@ -6,9 +6,10 @@ if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 
 set "VERSION=%APP_VERSION%"
 if not defined VERSION (
-  for /f %%V in ('powershell -NoProfile -Command "(Get-Content '%ROOT%\app\core\config.py' | Select-String -SimpleMatch 'app_version: str = Field(default=' | Select-Object -First 1).Line.Split([char]34)[1]"') do set "VERSION=%%V"
+  for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$content = Get-Content -Raw '%ROOT%\app\core\config.py'; $match = [regex]::Match($content, 'app_version:\s*str\s*=\s*Field\(default=\"([^\"]+)\"'); if ($match.Success) { $match.Groups[1].Value }"`) do set "VERSION=%%V"
 )
 if not defined VERSION set "VERSION=1.0"
+for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$value = '%VERSION%'; if ($value -match '^[0-9A-Za-z._-]+$') { $value } else { '1.0' }"`) do set "VERSION=%%V"
 set "BUILD_DATE=%BUILD_DATE%"
 if not defined BUILD_DATE (
   for /f "usebackq delims=" %%D in (`powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd"`) do set "BUILD_DATE=%%D"
