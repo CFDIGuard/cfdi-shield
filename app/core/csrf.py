@@ -40,7 +40,7 @@ def csrf_context_processor(request: Request) -> dict[str, Callable[[], str]]:
 
 
 async def require_csrf(request: Request) -> None:
-    if request.method in ("GET", "HEAD", "OPTIONS", "TRACE"):
+    if request.method.upper() in ("GET", "HEAD", "OPTIONS", "TRACE"):
         return
 
     form = await request.form()
