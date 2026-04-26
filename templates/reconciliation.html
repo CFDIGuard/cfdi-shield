@@ -477,6 +477,7 @@
             </div>
             <div class="panel-body">
                 <form class="upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="file" name="file" accept=".csv,.xlsx" required>
                     <button class="button-link" type="submit">Procesar estado bancario</button>
                 </form>
@@ -544,10 +545,12 @@
                                         <div class="inline-actions">
                                             {% if row.match_status == "POSIBLE" and row.matched_invoice_id %}
                                                 <form class="js-action-form" action="/reconciliation/confirm/{{ row.id }}" method="post">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                     <button class="btn-confirm" type="submit">Confirmar</button>
                                                 </form>
                                             {% endif %}
                                             <div class="assign-row">
+                                                <input type="hidden" class="js-csrf-token" value="{{ csrf_token() }}">
                                                 <select class="invoice-select">
                                                     <option value="">Cambiar CFDI...</option>
                                                     {% for option in invoice_options %}
@@ -557,6 +560,7 @@
                                                 <button class="btn-assign js-assign-button" type="button" data-transaction-id="{{ row.id }}">Asignar</button>
                                             </div>
                                             <form class="js-action-form" action="/reconciliation/reject/{{ row.id }}" method="post">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button class="btn-reject" type="submit">No conciliable</button>
                                             </form>
                                         </div>
@@ -657,10 +661,11 @@
             row.style.display = passesActiveFilters(transaction) ? "" : "none";
         }
 
-        async function postAction(url) {
+        async function postAction(url, formData) {
             const response = await fetch(buildActionUrl(url), {
                 method: "POST",
-                headers: { "X-Requested-With": "fetch" }
+                headers: { "X-Requested-With": "fetch" },
+                body: formData
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -674,7 +679,7 @@
             form.addEventListener("submit", async (event) => {
                 event.preventDefault();
                 try {
-                    await postAction(form.action);
+                    await postAction(form.action, new FormData(form));
                 } catch (error) {
                     alert(error.message);
                 }
@@ -689,8 +694,11 @@
                     alert("Selecciona un CFDI para asignar.");
                     return;
                 }
+                const csrfInput = row.querySelector(".js-csrf-token");
+                const formData = new FormData();
+                formData.append("csrf_token", csrfInput ? csrfInput.value : "");
                 try {
-                    await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`);
+                    await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`, formData);
                 } catch (error) {
                     alert(error.message);
                 }

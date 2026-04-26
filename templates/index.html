@@ -435,6 +435,7 @@
             <div class="account">
                 <span class="user-pill">{{ current_user.username }}</span>
                 <form action="/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="logout-button" type="submit">Salir</button>
                 </form>
             </div>
@@ -497,6 +498,7 @@
                 {% endif %}
 
                 <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="field">
                         <label for="file">Archivos XML</label>
                         <div class="upload-zone">

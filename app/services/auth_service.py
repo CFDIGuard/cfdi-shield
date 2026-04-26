@@ -4,18 +4,18 @@ import os
 import secrets
 from datetime import datetime, timedelta
 
+from app.core.csrf import APP_SECRET_KEY
 from app.core.config import settings
 
 
 PBKDF2_ITERATIONS = 390000
 TOKEN_HASH_ALGORITHM = "sha256"
-_runtime_secret_key = secrets.token_hex(32)
 
 
 def _get_secret_key() -> str:
     if settings.session_secret_key:
         return settings.session_secret_key
-    return _runtime_secret_key
+    return APP_SECRET_KEY
 
 
 def hash_password(password: str) -> str:

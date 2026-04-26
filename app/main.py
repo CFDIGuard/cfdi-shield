@@ -7,9 +7,11 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.csrf import APP_SECRET_KEY
 from app.db.init_db import ensure_db_initialized
 from app.db.session import SessionLocal
 from app.resource_paths import resource_path
@@ -37,6 +39,14 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
         openapi_url="/openapi.json" if settings.debug else None,
+    )
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=APP_SECRET_KEY,
+        session_cookie="cfdi_shield_web_session",
+        same_site="lax",
+        https_only=settings.base_url.startswith("https://"),
+        max_age=settings.session_max_age_seconds,
     )
     app.mount("/static", StaticFiles(directory=str(resource_path("static"))), name="static")
     app.include_router(api_router, prefix=settings.api_v1_prefix)

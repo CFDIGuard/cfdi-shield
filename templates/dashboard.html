@@ -583,7 +583,6 @@
 
         .settings-panel {
             overflow: hidden;
-            box-shadow: none;
         }
 
         .settings-toggle {
@@ -918,6 +917,7 @@
             <div class="account">
                 <span class="user-pill">{{ current_user.username }}</span>
                 <form action="/logout" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="logout-button" type="submit">Salir</button>
                 </form>
             </div>
@@ -1024,6 +1024,7 @@
                         </div>
                     </form>
                     <form action="/invoices/recalculate-payment-statuses" method="post" class="filters-actions">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
                         <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
                         <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
@@ -1071,6 +1072,7 @@
                             {% endif %}
                             {% if can_toggle_two_factor %}
                                 <form action="/two-factor/toggle" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button class="toggle-button" type="submit">
                                         {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
                                     </button>
@@ -1091,6 +1093,7 @@
                                 <span class="tag warning">Inactivo</span>
                             {% endif %}
                             <form action="/sat-validation/toggle" method="post">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button class="toggle-button" type="submit">
                                     {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
                                 </button>
@@ -1336,6 +1339,7 @@
                                             <td>
                                                 <div class="inline-actions">
                                                     <form action="/invoices/{{ invoice.id }}/recalculate-payment-status" method="post">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                         <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
                                                         <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
                                                         <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
@@ -1347,6 +1351,7 @@
                                                         <button class="ghost-button" type="submit">Recalcular pago</button>
                                                     </form>
                                                     <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                         <button class="delete-button" type="submit">Eliminar</button>
                                                     </form>
                                                 </div>

@@ -492,6 +492,7 @@
                                     </td>
                                     <td>
                                         <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="redirect_to" value="invoices">
                                             <input type="hidden" name="page" value="{{ page }}">
                                             <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
