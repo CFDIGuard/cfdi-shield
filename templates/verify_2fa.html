@@ -193,6 +193,7 @@
             </div>
 
             <form action="/verify-2fa" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="field">
                     <label for="code">Codigo de 6 digitos</label>
                     <input id="code" name="code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>

@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.csrf import require_csrf
 from app.db.session import get_db
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
@@ -33,7 +34,7 @@ from app.web_deps import get_current_user
 
 
 logger = logging.getLogger(__name__)
-router = APIRouter(tags=["web"])
+router = APIRouter(tags=["web"], dependencies=[Depends(require_csrf)])
 
 
 def _build_invoice_filters(
