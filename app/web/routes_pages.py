@@ -12,6 +12,11 @@ from app.models.user import User
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.invoice import InvoiceFilters
+from app.services.bank_reconciliation_service import (
+    get_reconciliation_rows,
+    get_reconciliation_summary,
+    process_bank_statement_upload,
+)
 from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
 from app.services.notification_service import smtp_ready_for_delivery
 from app.services.security_utils import mask_username, mask_uuid
@@ -314,6 +319,69 @@ def upload_xml_web(
     )
 
 
+@router.post("/reconciliation/upload", response_model=None)
+def upload_bank_statement_web(
+    file: UploadFile | None = File(default=None),
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    if file is None or not file.filename:
+        return RedirectResponse(
+            url=web_url("/reconciliation", error="Debes seleccionar un archivo CSV o XLSX."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    filename = file.filename
+    if not filename.lower().endswith((".csv", ".xlsx")):
+        return RedirectResponse(
+            url=web_url("/reconciliation", error="Solo se aceptan estados bancarios CSV o XLSX."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    file_bytes = file.file.read()
+    if len(file_bytes) > settings.max_upload_size_bytes:
+        return RedirectResponse(
+            url=web_url("/reconciliation", error="El archivo excede el tamano maximo permitido."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    try:
+        summary = process_bank_statement_upload(
+            db=db,
+            user_id=current_user.id,
+            file_bytes=file_bytes,
+            filename=filename,
+        )
+    except ValueError as exc:
+        db.rollback()
+        return RedirectResponse(
+            url=web_url("/reconciliation", error=str(exc)),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Unexpected error processing bank statement %s: %s", filename, exc)
+        return RedirectResponse(
+            url=web_url("/reconciliation", error="No fue posible procesar el estado bancario."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    return RedirectResponse(
+        url=web_url(
+            "/reconciliation",
+            message=(
+                "Estado bancario procesado: "
+                f"{summary['conciliados']} conciliados, "
+                f"{summary['posibles']} posibles, "
+                f"{summary['pendientes']} pendientes."
+            ),
+        ),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
 @router.get("/dashboard-web", response_class=HTMLResponse, response_model=None)
 def dashboard_web(
     request: Request,
@@ -349,6 +417,7 @@ def dashboard_web(
     reports_bundle = repository.reports(filters=filters)
     summary = reports_bundle["summary"]
     invoices = repository.list(limit=8, filters=filters)
+    reconciliation_summary = get_reconciliation_summary(db, current_user.id)
     sat_mode_effective, sat_mode_note = _sat_mode_view(current_user)
     two_factor_effective, two_factor_note, can_toggle_two_factor = _two_factor_view(current_user)
 
@@ -364,6 +433,7 @@ def dashboard_web(
             "details": details,
             "current_user": current_user,
             "filters": filters,
+            "reconciliation_summary": reconciliation_summary,
             "use_sat_validation": current_user.use_sat_validation,
             "sat_mode_effective": sat_mode_effective,
             "sat_mode_note": sat_mode_note,
@@ -378,6 +448,30 @@ def dashboard_web(
             "export_excel_url": f"/api/v1/dashboard/export-excel{query_suffix}",
             "export_rr1_url": f"/api/v1/dashboard/export-rr1-excel{query_suffix}",
             "export_rr9_url": f"/api/v1/dashboard/export-rr9-excel{query_suffix}",
+        },
+    )
+
+
+@router.get("/reconciliation", response_class=HTMLResponse, response_model=None)
+def reconciliation_web(
+    request: Request,
+    message: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    return templates.TemplateResponse(
+        request,
+        "reconciliation.html",
+        {
+            "current_user": current_user,
+            "message": message,
+            "error": error,
+            "summary": get_reconciliation_summary(db, current_user.id),
+            "rows": get_reconciliation_rows(db, current_user.id, limit=150),
         },
     )
 

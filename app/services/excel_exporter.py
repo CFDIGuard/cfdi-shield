@@ -132,7 +132,50 @@ def _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports: dict[str, object])
     _write_rows(ws_resumen_riesgos, headers, rows)
 
 
-def generate_excel_report(reports_bundle: dict[str, object], report_mode: str = "full") -> bytes:
+def _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows: list[dict[str, object]]) -> None:
+    headers = [
+        "Fecha movimiento",
+        "Descripcion",
+        "Referencia",
+        "Cargo",
+        "Abono",
+        "Monto",
+        "Estado conciliacion",
+        "Score",
+        "Motivo",
+        "UUID CFDI relacionado",
+        "Proveedor CFDI",
+        "Total CFDI MXN",
+    ]
+    rows = [
+        [
+            row.get("fecha"),
+            row.get("descripcion"),
+            row.get("referencia"),
+            row.get("cargo"),
+            row.get("abono"),
+            row.get("monto"),
+            row.get("match_status"),
+            row.get("match_score"),
+            row.get("match_reason"),
+            row.get("matched_invoice_uuid"),
+            row.get("matched_invoice_provider"),
+            row.get("matched_invoice_total_mxn"),
+        ]
+        for row in reconciliation_rows
+    ]
+    _write_rows(ws_conciliacion, headers, rows)
+    for cell in ws_conciliacion["D"][1:] + ws_conciliacion["E"][1:] + ws_conciliacion["F"][1:] + ws_conciliacion["H"][1:]:
+        cell.number_format = DECIMAL_FORMAT
+    for cell in ws_conciliacion["L"][1:]:
+        cell.number_format = MXN_FORMAT
+
+
+def generate_excel_report(
+    reports_bundle: dict[str, object],
+    report_mode: str = "full",
+    reconciliation_rows: list[dict[str, object]] | None = None,
+) -> bytes:
     summary = reports_bundle["summary"]
     reports = reports_bundle["reports"]
 
@@ -294,6 +337,10 @@ def generate_excel_report(reports_bundle: dict[str, object], report_mode: str = 
 
         ws_resumen_riesgos = wb.create_sheet("RESUMEN_RIESGOS")
         _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports)
+
+        if reconciliation_rows is not None:
+            ws_conciliacion = wb.create_sheet("CONCILIACION")
+            _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows)
 
     buffer = BytesIO()
     wb.save(buffer)

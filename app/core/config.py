@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     enable_exchange_rate_api: bool = Field(default=True, alias="ENABLE_EXCHANGE_RATE_API")
     exchange_rate_api_url: str = Field(default="https://api.frankfurter.dev", alias="EXCHANGE_RATE_API_URL")
     exchange_rate_timeout_seconds: int = Field(default=5, alias="EXCHANGE_RATE_TIMEOUT_SECONDS")
+    bank_reconciliation_amount_tolerance: float = Field(
+        default=1.0,
+        alias="BANK_RECONCILIATION_AMOUNT_TOLERANCE",
+    )
+    bank_reconciliation_date_window_days: int = Field(
+        default=5,
+        alias="BANK_RECONCILIATION_DATE_WINDOW_DAYS",
+    )
     session_secret_key: str = Field(default="", alias="APP_SECRET_KEY")
     session_cookie_name: str = "facturas_session"
     session_max_age_seconds: int = 604800

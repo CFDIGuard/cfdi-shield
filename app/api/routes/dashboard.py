@@ -19,6 +19,7 @@ from app.schemas.dashboard import (
     ReportsBundle,
     RiskSummary,
 )
+from app.services.bank_reconciliation_service import get_reconciliation_rows
 from app.services.excel_exporter import generate_excel_report
 from app.schemas.invoice import InvoiceFilters
 
@@ -136,7 +137,8 @@ def export_excel_report(
     filters: InvoiceFilters = Depends(get_invoice_filters),
 ) -> StreamingResponse:
     reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports(filters=filters)
-    workbook_bytes = generate_excel_report(reports_bundle)
+    reconciliation_rows = get_reconciliation_rows(db, current_user.id, limit=500)
+    workbook_bytes = generate_excel_report(reports_bundle, reconciliation_rows=reconciliation_rows)
     filename = f"facturas_v3_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
         BytesIO(workbook_bytes),

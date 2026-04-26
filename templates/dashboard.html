@@ -616,6 +616,7 @@
             <nav class="nav" aria-label="Navegacion principal">
                 <a href="/">Cargar</a>
                 <a class="active" href="/dashboard-web">Dashboard</a>
+                <a href="/reconciliation">Conciliacion</a>
             </nav>
             <div class="account">
                 <span class="user-pill">{{ current_user.username }}</span>
@@ -642,6 +643,7 @@
                     <a href="#proveedores-principales">Proveedores principales</a>
                     <a href="#resumen-periodo">Resumen del periodo</a>
                     <a href="#reportes-fiscales">Reportes fiscales</a>
+                    <a href="#conciliacion-bancaria">Conciliacion bancaria</a>
                 </nav>
             </div>
             <div class="toolbar">
@@ -1072,6 +1074,36 @@
                         {% else %}
                             <div class="empty">Todavia no hay filas para RR1 o RR9.</div>
                         {% endif %}
+                    </div>
+                </section>
+
+                <section class="panel" id="conciliacion-bancaria">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Conciliacion bancaria</div>
+                            <div class="panel-copy">Cruce de movimientos bancarios contra CFDI del usuario actual.</div>
+                        </div>
+                        <a class="logout-button" href="/reconciliation">Ver conciliacion</a>
+                    </div>
+                    <div class="panel-body">
+                        <div class="summary-grid">
+                            <article class="mini-metric">
+                                <span>Total movimientos</span>
+                                <strong>{{ reconciliation_summary.total_movimientos }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Conciliados</span>
+                                <strong>{{ reconciliation_summary.conciliados }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Posibles</span>
+                                <strong>{{ reconciliation_summary.posibles }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Pendientes</span>
+                                <strong>{{ reconciliation_summary.pendientes }}</strong>
+                            </article>
+                        </div>
                     </div>
                 </section>
 

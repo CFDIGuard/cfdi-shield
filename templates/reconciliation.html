@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFDI Shield | Conciliacion bancaria</title>
+    <style>
+        :root {
+            --bg: #edf3f8;
+            --surface: rgba(255, 255, 255, 0.96);
+            --surface-strong: #ffffff;
+            --surface-soft: #f8fbff;
+            --ink: #0f172a;
+            --muted: #64748b;
+            --line: #dbe4ee;
+            --primary: #2563eb;
+            --primary-soft: #e8f0ff;
+            --accent: #0f766e;
+            --success: #15803d;
+            --success-soft: #ecfdf3;
+            --warning: #b45309;
+            --warning-soft: #fff7ed;
+            --danger: #dc2626;
+            --danger-soft: #fff1f2;
+            --shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 24rem),
+                radial-gradient(circle at top right, rgba(15, 118, 110, 0.11), transparent 22rem),
+                var(--bg);
+        }
+
+        .shell {
+            width: min(1380px, calc(100% - 24px));
+            margin: 0 auto;
+            padding: 18px 0 28px;
+        }
+
+        .topbar, .hero, .panel, .metric {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .brand-mark {
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .nav, .toolbar, .account, .summary-grid {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav a, .button-link, .ghost-button, .user-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 36px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font: inherit;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .nav a {
+            color: var(--ink);
+        }
+
+        .nav a.active,
+        .nav a:hover {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .button-link {
+            border: 0;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            cursor: pointer;
+        }
+
+        .ghost-button,
+        .user-pill {
+            border: 1px solid var(--line);
+            background: var(--surface-strong);
+            color: var(--ink);
+        }
+
+        .user-pill {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .hero {
+            margin-top: 14px;
+            padding: 18px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(26px, 3vw, 34px);
+            line-height: 1.05;
+        }
+
+        .subtitle {
+            margin: 0;
+            max-width: 860px;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        .notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-top: 12px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .notice.success { background: var(--success-soft); color: var(--success); }
+        .notice.error { background: var(--danger-soft); color: var(--danger); }
+
+        .grid {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .metric {
+            padding: 14px;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            margin-top: 8px;
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .panel {
+            margin-top: 14px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-title {
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .panel-copy {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .panel-body {
+            padding: 14px;
+        }
+
+        .upload-form {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="file"] {
+            min-height: 40px;
+            padding: 8px 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            color: var(--ink);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            max-height: 520px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            min-width: 1220px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            vertical-align: middle;
+            font-size: 13px;
+        }
+
+        th {
+            color: var(--muted);
+            background: #fbfdff;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 5px 9px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .tag.success { background: var(--success-soft); color: var(--success); }
+        .tag.warning { background: var(--warning-soft); color: var(--warning); }
+        .tag.danger { background: var(--danger-soft); color: var(--danger); }
+
+        .muted { color: var(--muted); }
+
+        .empty {
+            padding: 16px 14px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 960px) {
+            .topbar, .hero, .panel-header, .upload-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">FG</div>
+                <span>CFDI Shield</span>
+            </div>
+            <nav class="nav" aria-label="Navegacion principal">
+                <a href="/">Cargar</a>
+                <a href="/dashboard-web">Dashboard</a>
+                <a class="active" href="/reconciliation">Conciliacion</a>
+            </nav>
+            <div class="account">
+                <span class="user-pill">{{ current_user.username }}</span>
+            </div>
+        </header>
+
+        <section class="hero">
+            <div>
+                <h1>Conciliacion bancaria</h1>
+                <p class="subtitle">
+                    Sube un estado bancario en CSV o XLSX y cruza sus movimientos contra los CFDI del usuario actual.
+                    Solo se guardan los datos estructurados extraidos para conciliacion.
+                </p>
+            </div>
+            <div class="toolbar">
+                <a class="ghost-button" href="/dashboard-web">Volver al dashboard</a>
+                <a class="ghost-button" href="/api/v1/dashboard/export-excel">Exportar Excel</a>
+            </div>
+        </section>
+
+        {% if message %}
+            <div class="notice success">{{ message }}</div>
+        {% endif %}
+        {% if error %}
+            <div class="notice error">{{ error }}</div>
+        {% endif %}
+
+        <section class="grid" aria-label="Resumen de conciliacion">
+            <article class="metric">
+                <div class="metric-label">Total movimientos</div>
+                <div class="metric-value">{{ summary.total_movimientos }}</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Conciliados</div>
+                <div class="metric-value">{{ summary.conciliados }}</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Posibles</div>
+                <div class="metric-value">{{ summary.posibles }}</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Pendientes</div>
+                <div class="metric-value">{{ summary.pendientes }}</div>
+            </article>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Cargar estado bancario</div>
+                    <div class="panel-copy">Acepta CSV o XLSX con columnas de fecha, descripcion y montos.</div>
+                </div>
+            </div>
+            <div class="panel-body">
+                <form class="upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
+                    <input type="file" name="file" accept=".csv,.xlsx" required>
+                    <button class="button-link" type="submit">Procesar estado bancario</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Movimientos conciliados</div>
+                    <div class="panel-copy">Cada fila muestra el mejor cruce encontrado contra CFDI del usuario actual.</div>
+                </div>
+            </div>
+            {% if rows %}
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripcion</th>
+                                <th>Referencia</th>
+                                <th>Monto</th>
+                                <th>Estado</th>
+                                <th>CFDI sugerido</th>
+                                <th>Score</th>
+                                <th>Motivo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                                <tr>
+                                    <td>{{ row.fecha or "-" }}</td>
+                                    <td>{{ row.descripcion }}</td>
+                                    <td>{{ row.referencia or "-" }}</td>
+                                    <td>${{ "{:,.2f}".format(row.monto) }}</td>
+                                    <td>
+                                        {% if row.match_status == "CONCILIADO" %}
+                                            <span class="tag success">CONCILIADO</span>
+                                        {% elif row.match_status == "POSIBLE" %}
+                                            <span class="tag warning">POSIBLE</span>
+                                        {% else %}
+                                            <span class="tag danger">PENDIENTE</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if row.matched_invoice_uuid %}
+                                            <strong>{{ row.matched_invoice_provider or "-" }}</strong><br>
+                                            <span class="muted">{{ row.matched_invoice_uuid }}</span>
+                                        {% else %}
+                                            <span class="muted">Sin sugerencia</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ "{:,.2f}".format(row.match_score) }}</td>
+                                    <td>{{ row.match_reason or "-" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty">Todavia no hay movimientos bancarios cargados.</div>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

@@ -161,6 +161,61 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Proveedor B" in rr9_filtered_page.text
     assert "Proveedor A" not in rr9_filtered_page.text
 
+    bank_csv = (
+        "fecha,descripcion,referencia,monto\n"
+        "2026-04-25,Pago Proveedor A AAA010101AAA,AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA,100.00\n"
+        "2026-04-25,Pago Proveedor A2,,151.00\n"
+        "2026-04-25,Movimiento sin match,,999.00\n"
+    ).encode("utf-8")
+    upload_reconciliation_a = client.post(
+        "/reconciliation/upload",
+        cookies=cookie_a,
+        files={"file": ("estado.csv", bank_csv, "text/csv")},
+        follow_redirects=False,
+    )
+    assert upload_reconciliation_a.status_code == 303
+
+    reconciliation_page_a = client.get("/reconciliation", cookies=cookie_a)
+    assert reconciliation_page_a.status_code == 200
+    assert "Pago Proveedor A AAA010101AAA" in reconciliation_page_a.text
+    assert "Pago Proveedor A2" in reconciliation_page_a.text
+    assert "Movimiento sin match" in reconciliation_page_a.text
+    assert "CONCILIADO" in reconciliation_page_a.text
+    assert "POSIBLE" in reconciliation_page_a.text
+    assert "PENDIENTE" in reconciliation_page_a.text
+
+    reconciliation_page_b = client.get("/reconciliation", cookies=cookie_b)
+    assert reconciliation_page_b.status_code == 200
+    assert "Pago Proveedor A AAA010101AAA" not in reconciliation_page_b.text
+    assert "Movimiento sin match" not in reconciliation_page_b.text
+
+    reconciliation_excel_a = client.get("/api/v1/dashboard/export-excel", cookies=cookie_a)
+    assert reconciliation_excel_a.status_code == 200
+    reconciliation_book_a = load_workbook(filename=BytesIO(reconciliation_excel_a.content))
+    assert "CONCILIACION" in reconciliation_book_a.sheetnames
+    reconciliation_sheet_a = reconciliation_book_a["CONCILIACION"]
+    reconciliation_values_a = "\n".join(
+        "" if cell is None else str(cell)
+        for row in reconciliation_sheet_a.iter_rows(values_only=True)
+        for cell in row
+    )
+    assert "Pago Proveedor A AAA010101AAA" in reconciliation_values_a
+    assert "Pago Proveedor A2" in reconciliation_values_a
+    assert "Movimiento sin match" in reconciliation_values_a
+
+    reconciliation_excel_b = client.get("/api/v1/dashboard/export-excel", cookies=cookie_b)
+    assert reconciliation_excel_b.status_code == 200
+    reconciliation_book_b = load_workbook(filename=BytesIO(reconciliation_excel_b.content))
+    assert "CONCILIACION" in reconciliation_book_b.sheetnames
+    reconciliation_sheet_b = reconciliation_book_b["CONCILIACION"]
+    reconciliation_values_b = "\n".join(
+        "" if cell is None else str(cell)
+        for row in reconciliation_sheet_b.iter_rows(values_only=True)
+        for cell in row
+    )
+    assert "Pago Proveedor A AAA010101AAA" not in reconciliation_values_b
+    assert "Movimiento sin match" not in reconciliation_values_b
+
     get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b.id}", cookies=cookie_a)
     assert get_b_as_a.status_code == 404
 
