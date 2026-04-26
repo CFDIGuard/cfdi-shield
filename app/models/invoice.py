@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -51,4 +51,4 @@ class Invoice(Base):
     score_proveedor: Mapped[float] = mapped_column(Float, default=0)
     detalle_riesgo: Mapped[str | None] = mapped_column(Text, default=None)
     sat_validado_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

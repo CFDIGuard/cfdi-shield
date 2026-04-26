@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,4 +25,4 @@ class PaymentComplement(Base):
     saldo_anterior: Mapped[float] = mapped_column(Float, default=0)
     importe_pagado: Mapped[float] = mapped_column(Float, default=0)
     saldo_insoluto: Mapped[float] = mapped_column(Float, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

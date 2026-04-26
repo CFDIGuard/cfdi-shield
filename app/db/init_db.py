@@ -61,6 +61,17 @@ def _execute_add_column_if_missing(table_name: str, column_name: str, statement:
             connection.execute(text(statement))
 
 
+def _create_index_if_missing(index_name: str, table_name: str, columns: str, unique: bool = False) -> None:
+    qualifier = "UNIQUE " if unique else ""
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                f"CREATE {qualifier}INDEX IF NOT EXISTS {index_name} "
+                f"ON {table_name}({columns})"
+            )
+        )
+
+
 def _ensure_user_columns() -> None:
     statements = {
         "two_factor_enabled": _add_column_statement(
@@ -87,15 +98,30 @@ def _ensure_invoice_indexes() -> None:
             connection.execute(text("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_uuid_key"))
         connection.execute(text("DROP INDEX IF EXISTS ix_invoices_uuid_unique"))
         connection.execute(text("DROP INDEX IF EXISTS ix_invoices_uuid"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_uuid ON invoices(uuid)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_user_id ON invoices(user_id)"))
-        connection.execute(text("CREATE INDEX IF NOT EXISTS ix_invoices_organization_id ON invoices(organization_id)"))
-        connection.execute(
-            text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ix_invoices_user_uuid_unique "
-                "ON invoices(user_id, uuid)"
-            )
-        )
+    _create_index_if_missing("ix_invoices_uuid", "invoices", "uuid")
+    _create_index_if_missing("ix_invoices_user_id", "invoices", "user_id")
+    _create_index_if_missing("ix_invoices_organization_id", "invoices", "organization_id")
+    _create_index_if_missing("ix_invoices_user_uuid_unique", "invoices", "user_id, uuid", unique=True)
+
+
+def _ensure_payment_complement_indexes() -> None:
+    if "payment_complements" not in inspect(engine).get_table_names():
+        return
+    _create_index_if_missing(
+        "ix_payment_complements_organization_id",
+        "payment_complements",
+        "organization_id",
+    )
+
+
+def _ensure_bank_transaction_indexes() -> None:
+    if "bank_transactions" not in inspect(engine).get_table_names():
+        return
+    _create_index_if_missing(
+        "ix_bank_transactions_organization_id",
+        "bank_transactions",
+        "organization_id",
+    )
 
 
 def _ensure_invoice_user_ownership_constraints() -> None:
@@ -122,6 +148,45 @@ def _ensure_invoice_user_ownership_constraints() -> None:
                 )
             )
         connection.execute(text("ALTER TABLE invoices ALTER COLUMN user_id SET NOT NULL"))
+
+
+def _ensure_nullable_organization_constraints() -> None:
+    # organization_id permanece nullable en esta fase para no romper compatibilidad ni
+    # exigir backfill inmediato. En PostgreSQL agregamos foreign keys solo donde es
+    # seguro hacerlo sin forzar datos existentes; el endurecimiento adicional
+    # (not null / scoping por organization_id) se hace despues del backfill.
+    if _database_dialect() != "postgresql":
+        return
+
+    constraint_specs = [
+        ("invoices", "invoices_organization_id_fkey", "organization_id"),
+        ("payment_complements", "payment_complements_organization_id_fkey", "organization_id"),
+        ("bank_transactions", "bank_transactions_organization_id_fkey", "organization_id"),
+    ]
+
+    with engine.begin() as connection:
+        existing = {
+            (row[0], row[1])
+            for row in connection.execute(
+                text(
+                    "SELECT table_name, constraint_name "
+                    "FROM information_schema.table_constraints "
+                    "WHERE constraint_type = 'FOREIGN KEY' "
+                    "AND table_name IN ('invoices', 'payment_complements', 'bank_transactions')"
+                )
+            ).fetchall()
+        }
+
+        for table_name, constraint_name, column_name in constraint_specs:
+            if (table_name, constraint_name) in existing:
+                continue
+            connection.execute(
+                text(
+                    f"ALTER TABLE {table_name} "
+                    f"ADD CONSTRAINT {constraint_name} "
+                    f"FOREIGN KEY ({column_name}) REFERENCES organizations(id)"
+                )
+            )
 
 
 def _ensure_invoice_columns() -> None:
@@ -233,14 +298,6 @@ def _ensure_payment_complement_columns() -> None:
     for column_name, statement in statements.items():
         _execute_add_column_if_missing("payment_complements", column_name, statement)
 
-    with engine.begin() as connection:
-        connection.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_payment_complements_organization_id "
-                "ON payment_complements(organization_id)"
-            )
-        )
-
 
 def _ensure_bank_transaction_columns() -> None:
     if "bank_transactions" not in inspect(engine).get_table_names():
@@ -257,14 +314,6 @@ def _ensure_bank_transaction_columns() -> None:
     }
     for column_name, statement in statements.items():
         _execute_add_column_if_missing("bank_transactions", column_name, statement)
-
-    with engine.begin() as connection:
-        connection.execute(
-            text(
-                "CREATE INDEX IF NOT EXISTS ix_bank_transactions_organization_id "
-                "ON bank_transactions(organization_id)"
-            )
-        )
 
 
 def _first_user_id() -> int | None:
@@ -314,5 +363,8 @@ def ensure_db_initialized() -> None:
         _backfill_invoice_user_id()
         _ensure_invoice_user_ownership_constraints()
         _ensure_invoice_indexes()
+        _ensure_payment_complement_indexes()
+        _ensure_bank_transaction_indexes()
+        _ensure_nullable_organization_constraints()
         _initialized = True
         logger.info("Database schema ready")
