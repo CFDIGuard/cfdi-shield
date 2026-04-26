@@ -5,18 +5,23 @@ from sqlalchemy.orm import Session
 
 from app.models.bank_transaction import BankTransaction
 from app.models.invoice import Invoice
+from app.repositories.scope_utils import apply_owner_scope, resolve_user_organization_id
 from app.schemas.bank_reconciliation import BankReconciliationFilters
 
 
 class BankTransactionRepository:
-    def __init__(self, db: Session, user_id: int | None = None):
+    def __init__(self, db: Session, user_id: int | None = None, organization_id: int | None = None):
         self.db = db
         self.user_id = user_id
+        self.organization_id = organization_id if organization_id is not None else resolve_user_organization_id(db, user_id)
 
     def _scope_statement(self, statement):
-        if self.user_id is None:
-            return statement
-        return statement.where(BankTransaction.user_id == self.user_id)
+        return apply_owner_scope(
+            statement,
+            BankTransaction,
+            user_id=self.user_id,
+            organization_id=self.organization_id,
+        )
 
     def _apply_filters(self, statement, filters: BankReconciliationFilters | None):
         if filters is None:
@@ -60,6 +65,8 @@ class BankTransactionRepository:
         if existing is None:
             if self.user_id is not None:
                 payload["user_id"] = self.user_id
+            if self.organization_id is not None:
+                payload["organization_id"] = self.organization_id
             existing = BankTransaction(**payload)
             self.db.add(existing)
         else:
@@ -67,6 +74,8 @@ class BankTransactionRepository:
                 setattr(existing, key, value)
             if self.user_id is not None:
                 existing.user_id = self.user_id
+            if self.organization_id is not None:
+                existing.organization_id = self.organization_id
         self.db.flush()
         return existing
 

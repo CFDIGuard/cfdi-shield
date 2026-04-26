@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.invoice import Invoice
 from app.models.payment_complement import PaymentComplement
 from app.models.sat_validation_cache import SatValidationCache
+from app.repositories.scope_utils import apply_owner_scope, resolve_user_organization_id
 from app.schemas.invoice import InvoiceCreate, InvoiceFilters
 from app.schemas.payment_complement import PaymentComplementCreate
 from app.services.reports_service import build_dashboard_summary, build_reports_bundle
@@ -18,14 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 class InvoiceRepository:
-    def __init__(self, db: Session, user_id: int | None = None):
+    def __init__(self, db: Session, user_id: int | None = None, organization_id: int | None = None):
         self.db = db
         self.user_id = user_id
+        self.organization_id = organization_id if organization_id is not None else resolve_user_organization_id(db, user_id)
 
     def _scope_invoice_statement(self, statement):
-        if self.user_id is None:
-            return statement
-        return statement.where(Invoice.user_id == self.user_id)
+        return apply_owner_scope(
+            statement,
+            Invoice,
+            user_id=self.user_id,
+            organization_id=self.organization_id,
+        )
 
     def _apply_visibility(self, statement, include_payment_invoices: bool = False):
         if include_payment_invoices:
@@ -71,9 +76,12 @@ class InvoiceRepository:
         return statement
 
     def _scope_payment_statement(self, statement):
-        if self.user_id is None:
-            return statement
-        return statement.where(PaymentComplement.user_id == self.user_id)
+        return apply_owner_scope(
+            statement,
+            PaymentComplement,
+            user_id=self.user_id,
+            organization_id=self.organization_id,
+        )
 
     @staticmethod
     def _normalize_uuid(value: str | None) -> str:
@@ -136,7 +144,10 @@ class InvoiceRepository:
             )
 
         for item in normalized_rows:
-            self.db.add(PaymentComplement(**item.model_dump()))
+            payload = item.model_dump()
+            if self.organization_id is not None:
+                payload["organization_id"] = self.organization_id
+            self.db.add(PaymentComplement(**payload))
             logger.info(
                 "Payment complement persisted | payment_invoice_uuid=%s | related_invoice_uuid=%s | importe_pagado=%.2f",
                 invoice.uuid,
@@ -150,9 +161,15 @@ class InvoiceRepository:
             return None
 
         scoped_user_id = self.user_id if self.user_id is not None else user_id
-        statement = select(Invoice).where(func.upper(func.trim(Invoice.uuid)) == normalized_uuid)
-        if scoped_user_id is not None:
-            statement = statement.where(Invoice.user_id == scoped_user_id)
+        scoped_organization_id = self.organization_id
+        if scoped_organization_id is None and scoped_user_id is not None:
+            scoped_organization_id = resolve_user_organization_id(self.db, scoped_user_id)
+        statement = apply_owner_scope(
+            select(Invoice),
+            Invoice,
+            user_id=scoped_user_id,
+            organization_id=scoped_organization_id,
+        ).where(func.upper(func.trim(Invoice.uuid)) == normalized_uuid)
         invoice = self.db.execute(statement).scalar_one_or_none()
         if invoice is None:
             logger.info(
@@ -229,9 +246,15 @@ class InvoiceRepository:
 
     def recalculate_all_payment_statuses(self, user_id: int | None = None) -> int:
         scoped_user_id = self.user_id if self.user_id is not None else user_id
-        statement = select(Invoice).where(func.upper(func.coalesce(Invoice.tipo_comprobante, "I")) != "P")
-        if scoped_user_id is not None:
-            statement = statement.where(Invoice.user_id == scoped_user_id)
+        scoped_organization_id = self.organization_id
+        if scoped_organization_id is None and scoped_user_id is not None:
+            scoped_organization_id = resolve_user_organization_id(self.db, scoped_user_id)
+        statement = apply_owner_scope(
+            select(Invoice),
+            Invoice,
+            user_id=scoped_user_id,
+            organization_id=scoped_organization_id,
+        ).where(func.upper(func.coalesce(Invoice.tipo_comprobante, "I")) != "P")
         statement = statement.order_by(Invoice.user_id.asc(), Invoice.created_at.asc(), Invoice.id.asc())
         invoices = list(self.db.execute(statement).scalars().all())
         logger.info(
@@ -293,6 +316,8 @@ class InvoiceRepository:
         payment_complements = payload.pop("payment_complements", [])
         if self.user_id is not None:
             payload["user_id"] = self.user_id
+        if self.organization_id is not None:
+            payload["organization_id"] = self.organization_id
         invoice = Invoice(**payload)
         self.db.add(invoice)
         self.db.flush()
@@ -367,6 +392,12 @@ class InvoiceRepository:
 
     def list_all(self, filters: InvoiceFilters | None = None, include_payment_invoices: bool = False) -> list[Invoice]:
         return self.list_filtered(filters=filters, skip=0, limit=None, include_payment_invoices=include_payment_invoices)
+
+    def count_filtered(self, filters: InvoiceFilters | None = None, include_payment_invoices: bool = False) -> int:
+        statement = self._scope_invoice_statement(select(func.count(Invoice.id)))
+        statement = self._apply_visibility(statement, include_payment_invoices=include_payment_invoices)
+        statement = self._apply_filters(statement, filters)
+        return int(self.db.execute(statement).scalar_one() or 0)
 
     def exists_same_rfc_total(self, rfc_emisor: str, total: float) -> bool:
         statement = self._scope_invoice_statement(select(func.count(Invoice.id))).where(
@@ -444,8 +475,12 @@ class InvoiceRepository:
 
             bank_transactions = list(
                 self.db.execute(
-                    select(BankTransaction).where(
-                        BankTransaction.user_id == invoice.user_id,
+                    apply_owner_scope(
+                        select(BankTransaction),
+                        BankTransaction,
+                        user_id=invoice.user_id,
+                        organization_id=invoice.organization_id or self.organization_id,
+                    ).where(
                         BankTransaction.matched_invoice_id == invoice.id,
                     )
                 ).scalars().all()
