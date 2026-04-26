@@ -40,16 +40,16 @@
         }
 
         .shell {
-            width: min(1360px, calc(100% - 24px));
+            width: min(1380px, calc(100% - 18px));
             margin: 0 auto;
-            padding: 18px 0 28px;
+            padding: 12px 0 18px;
         }
 
         .topbar,
         .hero,
         .kpi,
         .panel,
-        .security-card {
+        .settings-panel {
             background: var(--surface);
             border: 1px solid rgba(219, 228, 238, 0.92);
             border-radius: 8px;
@@ -60,14 +60,14 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 12px 14px;
+            gap: 10px;
+            padding: 10px 12px;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             font-size: 18px;
             font-weight: 900;
         }
@@ -87,10 +87,11 @@
         .nav,
         .account,
         .toolbar,
-        .security-actions {
+        .settings-actions,
+        .settings-summary-badges {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .nav a,
@@ -102,8 +103,8 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 36px;
-            padding: 8px 12px;
+            min-height: 34px;
+            padding: 7px 10px;
             border-radius: 8px;
             font: inherit;
             font-weight: 800;
@@ -121,12 +122,22 @@
             color: var(--primary);
         }
 
-        .button-link,
-        .toggle-button {
+        .button-link {
             border: 0;
             color: #fff;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             cursor: pointer;
+        }
+
+        .toggle-button {
+            border: 1px solid var(--line);
+            color: var(--ink);
+            background: var(--surface-strong);
+            cursor: pointer;
+            min-height: 30px;
+            padding: 5px 9px;
+            font-size: 11px;
+            font-weight: 800;
         }
 
         .logout-button {
@@ -137,7 +148,7 @@
         }
 
         .delete-button {
-            min-width: 96px;
+            min-width: 84px;
             border: 0;
             color: #fff;
             background: linear-gradient(135deg, #ef4444, var(--danger));
@@ -165,12 +176,12 @@
         }
 
         .hero {
-            margin-top: 14px;
-            padding: 18px 20px;
+            margin-top: 10px;
+            padding: 14px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
+            gap: 12px;
         }
 
         h1 {
@@ -187,17 +198,17 @@
         }
 
         .hero-highlights {
-            margin-top: 12px;
+            margin-top: 10px;
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .dashboard-section-nav {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
+            gap: 6px;
+            margin-top: 10px;
         }
 
         .dashboard-section-nav a {
@@ -222,14 +233,14 @@
         .report-actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .highlight {
             display: inline-flex;
             align-items: center;
-            min-height: 30px;
-            padding: 6px 10px;
+            min-height: 28px;
+            padding: 5px 9px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-soft);
@@ -241,9 +252,9 @@
         .alert {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            margin-top: 12px;
-            padding: 11px 12px;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 9px 10px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 800;
@@ -253,21 +264,21 @@
         .alert.error { background: var(--danger-soft); color: var(--danger); }
 
         .filters-panel {
-            margin-top: 14px;
-            padding: 14px;
+            margin-top: 10px;
+            padding: 12px;
             display: grid;
-            gap: 12px;
+            gap: 10px;
         }
 
         .filters-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 10px;
+            gap: 8px;
         }
 
         .field {
             display: grid;
-            gap: 6px;
+            gap: 4px;
         }
 
         .field label {
@@ -279,8 +290,8 @@
 
         .field input,
         .field select {
-            min-height: 40px;
-            padding: 9px 11px;
+            min-height: 36px;
+            padding: 8px 10px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-strong);
@@ -290,19 +301,19 @@
 
         .filters-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
             flex-wrap: wrap;
         }
 
         .kpis {
-            margin-top: 14px;
+            margin-top: 8px;
             display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 6px;
         }
 
         .kpi {
-            padding: 14px;
+            padding: 9px 10px;
             position: relative;
             overflow: hidden;
         }
@@ -319,7 +330,7 @@
 
         .kpi-label {
             color: var(--muted);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
         }
@@ -327,8 +338,8 @@
         .kpi-value {
             position: relative;
             z-index: 1;
-            margin-top: 8px;
-            font-size: 24px;
+            margin-top: 4px;
+            font-size: 20px;
             font-weight: 900;
             line-height: 1.1;
         }
@@ -336,51 +347,239 @@
         .kpi-meta {
             position: relative;
             z-index: 1;
-            margin-top: 6px;
+            margin-top: 3px;
             color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .kpi-groups {
+            margin-top: 8px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .kpi-group {
+            display: grid;
+            gap: 4px;
+        }
+
+        .kpi-group-title {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .kpis-secondary {
+            margin-top: 6px;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 6px;
+        }
+
+        .kpi-primary {
+            border-color: rgba(201, 215, 231, 0.98);
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+        }
+
+        .kpi-primary .kpi-value {
+            font-size: 22px;
+        }
+
+        .kpi-primary .kpi-meta {
+            max-width: 18ch;
+        }
+
+        .kpi-secondary {
+            padding: 7px 8px;
+            background: var(--surface-soft);
+            box-shadow: none;
+        }
+
+        .kpi-secondary::after {
+            display: none;
+        }
+
+        .kpi-secondary .kpi-label {
+            font-size: 10px;
+        }
+
+        .kpi-secondary .kpi-value {
+            margin-top: 3px;
+            font-size: 17px;
+        }
+
+        .kpi-secondary .kpi-meta {
+            margin-top: 2px;
+            font-size: 10px;
+            line-height: 1.25;
+        }
+
+        .recommended-actions {
+            margin-top: 8px;
+            padding: 10px;
+            border: 1px solid rgba(201, 215, 231, 0.98);
+            border-radius: 8px;
+            background: var(--surface);
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+
+        .recommended-actions-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .recommended-actions-title {
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .recommended-actions-copy {
+            margin-top: 2px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .recommended-actions-list {
+            display: grid;
+            gap: 6px;
+        }
+
+        .recommended-action {
+            display: grid;
+            gap: 4px;
+            padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-soft);
+        }
+
+        .recommended-action strong {
             font-size: 12px;
-            line-height: 1.4;
+        }
+
+        .recommended-action span {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .recommended-action a {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            min-height: 24px;
+            padding: 2px 0;
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 900;
+            text-decoration: none;
+        }
+
+        .recommended-action a:hover {
+            text-decoration: underline;
+        }
+
+        .recommended-actions-empty {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
         }
 
         .layout {
-            margin-top: 14px;
+            margin-top: 8px;
             display: grid;
             grid-template-columns: 1.45fr 1fr;
-            gap: 12px;
+            gap: 8px;
         }
 
         .stack {
             display: grid;
-            gap: 12px;
+            gap: 8px;
         }
 
-        .security-card {
+        .settings-panel {
+            overflow: hidden;
+        }
+
+        .settings-toggle {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 14px;
-            padding: 14px 16px;
+            gap: 8px;
+            padding: 8px 10px;
+            cursor: pointer;
+            list-style: none;
         }
 
-        .security-copy strong {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 16px;
+        .settings-toggle::-webkit-details-marker {
+            display: none;
         }
 
-        .security-copy span {
+        .settings-title {
+            display: grid;
+            gap: 4px;
+        }
+
+        .settings-title strong {
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .settings-title span {
             color: var(--muted);
-            line-height: 1.6;
+            line-height: 1.5;
+            font-size: 12px;
+        }
+
+        .settings-body {
+            padding: 0 10px 10px;
+            border-top: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        .settings-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .settings-row:last-child {
+            border-bottom: 0;
+        }
+
+        .settings-copy {
+            display: grid;
+            gap: 4px;
+        }
+
+        .settings-copy strong {
             font-size: 14px;
+            font-weight: 900;
+        }
+
+        .settings-copy span {
+            color: var(--muted);
+            line-height: 1.5;
+            font-size: 12px;
         }
 
         .tag {
             display: inline-flex;
             align-items: center;
-            min-height: 26px;
-            padding: 5px 8px;
+            min-height: 22px;
+            padding: 3px 7px;
             border-radius: 8px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
         }
 
@@ -397,8 +596,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
-            padding: 13px 14px;
+            gap: 8px;
+            padding: 8px 10px;
             border-bottom: 1px solid var(--line);
         }
 
@@ -409,22 +608,22 @@
 
         .panel-copy {
             color: var(--muted);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
         }
 
         .panel-body {
-            padding: 14px;
+            padding: 10px;
         }
 
         .summary-grid {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
+            gap: 6px;
         }
 
         .mini-metric {
-            padding: 12px;
+            padding: 8px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-soft);
@@ -432,8 +631,8 @@
 
         .mini-metric strong {
             display: block;
-            margin-top: 6px;
-            font-size: 20px;
+            margin-top: 4px;
+            font-size: 18px;
             line-height: 1.1;
         }
 
@@ -446,8 +645,8 @@
 
         .risk-bars {
             display: grid;
-            gap: 10px;
-            margin-top: 12px;
+            gap: 6px;
+            margin-top: 8px;
         }
 
         .risk-row {
@@ -482,39 +681,39 @@
         }
 
         .dashboard-scroll-section {
-            max-height: 420px;
+            max-height: 400px;
             overflow-y: auto;
             overflow-x: auto;
         }
 
         .dashboard-scroll-section table {
-            min-width: 900px;
+            min-width: 860px;
             width: 100%;
             border-collapse: collapse;
         }
 
         #ultimos-cfdi table {
-            min-width: 1100px;
+            min-width: 1020px;
         }
 
         table {
             width: 100%;
-            min-width: 920px;
+            min-width: 860px;
             border-collapse: collapse;
         }
 
         th, td {
-            padding: 10px 12px;
+            padding: 6px 8px;
             border-bottom: 1px solid var(--line);
             text-align: left;
             vertical-align: middle;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         th {
             color: var(--muted);
             background: #fbfdff;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 900;
             text-transform: uppercase;
             position: sticky;
@@ -531,7 +730,7 @@
         .inline-actions {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
         }
 
         .table-name span,
@@ -540,28 +739,29 @@
         }
 
         .uuid {
-            max-width: 220px;
+            max-width: 190px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .empty {
-            padding: 16px 14px;
+            padding: 10px;
             color: var(--muted);
+            font-size: 12px;
         }
 
         .risk-list {
             display: grid;
-            gap: 10px;
+            gap: 6px;
         }
 
         .risk-item {
             display: grid;
-            gap: 8px;
-            padding: 12px;
+            gap: 6px;
+            padding: 8px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-strong);
@@ -571,7 +771,7 @@
             display: flex;
             align-items: flex-start;
             justify-content: space-between;
-            gap: 10px;
+            gap: 8px;
         }
 
         .risk-title {
@@ -580,12 +780,16 @@
 
         .risk-copy {
             color: var(--muted);
-            font-size: 12px;
-            line-height: 1.6;
+            font-size: 11px;
+            line-height: 1.45;
         }
 
         @media (max-width: 1200px) {
             .kpis {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .kpis-secondary {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
 
@@ -600,8 +804,9 @@
             .nav,
             .account,
             .toolbar,
-            .security-card,
-            .security-actions,
+            .settings-toggle,
+            .settings-row,
+            .settings-actions,
             .panel-header,
             .risk-head {
                 flex-direction: column;
@@ -609,6 +814,7 @@
             }
 
             .kpis,
+            .kpis-secondary,
             .summary-grid,
             .filters-grid {
                 grid-template-columns: 1fr;
@@ -723,7 +929,7 @@
                         <input id="fecha_hasta" name="fecha_hasta" type="date" value="{{ filters.fecha_hasta or '' }}">
                     </div>
                 </div>
-                <div class="filters-actions" style="margin-top: 12px;">
+                <div class="filters-actions" style="margin-top: 8px;">
                     <button class="button-link" type="submit">Aplicar filtros</button>
                     <a class="logout-button" href="/dashboard-web">Limpiar filtros</a>
                 </div>
@@ -764,105 +970,197 @@
             </div>
         {% endif %}
 
-        <section class="kpis" aria-label="Indicadores principales">
-            <article class="kpi">
-                <div class="kpi-label">Total facturado MXN</div>
-                <div class="kpi-value">${{ "{:,.2f}".format(summary.total_facturado) }}</div>
-                <div class="kpi-meta">Monto consolidado convertido a MXN.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Facturas</div>
-                <div class="kpi-value">{{ summary.facturas }}</div>
-                <div class="kpi-meta">CFDI procesados dentro del tablero.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Vigentes</div>
-                <div class="kpi-value">{{ summary.vigentes }}</div>
-                <div class="kpi-meta">CFDI con estatus SAT vigente.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Canceladas</div>
-                <div class="kpi-value">{{ summary.canceladas }}</div>
-                <div class="kpi-meta">Registros marcados como cancelados.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Sin validacion SAT</div>
-                <div class="kpi-value">{{ summary.sin_validacion_sat }}</div>
-                <div class="kpi-meta">CFDI cargados sin consulta SAT activa.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Proveedores unicos</div>
-                <div class="kpi-value">{{ summary.proveedores_unicos }}</div>
-                <div class="kpi-meta">RFC emisores distintos registrados.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Riesgos altos</div>
-                <div class="kpi-value">{{ summary.riesgos_altos }}</div>
-                <div class="kpi-meta">Casos que merecen revision puntual.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Facturas pagadas</div>
-                <div class="kpi-value">{{ summary.facturas_pagadas }}</div>
-                <div class="kpi-meta">Facturas con complemento de pago completamente aplicado.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Facturas parciales</div>
-                <div class="kpi-value">{{ summary.facturas_parciales }}</div>
-                <div class="kpi-meta">Facturas con pago parcial registrado.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Facturas pendientes</div>
-                <div class="kpi-value">{{ summary.facturas_pendientes }}</div>
-                <div class="kpi-meta">Facturas PPD aun sin liquidacion completa.</div>
-            </article>
-            <article class="kpi">
-                <div class="kpi-label">Complementos sin relacion</div>
-                <div class="kpi-value">{{ summary.complementos_sin_factura_relacionada }}</div>
-                <div class="kpi-meta">Debe permanecer en cero para evitar cruces incompletos.</div>
-            </article>
+        <section class="kpi-groups" aria-label="Indicadores ejecutivos">
+            <div class="kpi-group">
+                <div class="kpi-group-title">Desempeño financiero</div>
+                <section class="kpis" aria-label="Desempeno financiero">
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Total facturado MXN</div>
+                        <div class="kpi-value">${{ "{:,.2f}".format(summary.total_facturado) }}</div>
+                        <div class="kpi-meta">Vision consolidada del monto convertido a MXN.</div>
+                    </article>
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Facturas</div>
+                        <div class="kpi-value">{{ summary.facturas }}</div>
+                        <div class="kpi-meta">CFDI visibles dentro del tablero ejecutivo.</div>
+                    </article>
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Riesgos altos</div>
+                        <div class="kpi-value">{{ summary.riesgos_altos }}</div>
+                        <div class="kpi-meta">Casos que merecen atencion fiscal inmediata.</div>
+                    </article>
+                </section>
+            </div>
+
+            <div class="kpi-group">
+                <div class="kpi-group-title">Seguimiento fiscal y de cobro</div>
+                <section class="kpis" aria-label="Seguimiento fiscal y de cobro">
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Facturas pagadas</div>
+                        <div class="kpi-value">{{ summary.facturas_pagadas }}</div>
+                        <div class="kpi-meta">Complementos aplicados y saldo cubierto.</div>
+                    </article>
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Facturas parciales</div>
+                        <div class="kpi-value">{{ summary.facturas_parciales }}</div>
+                        <div class="kpi-meta">Pagos parciales que aun requieren seguimiento.</div>
+                    </article>
+                    <article class="kpi kpi-primary">
+                        <div class="kpi-label">Facturas pendientes</div>
+                        <div class="kpi-value">{{ summary.facturas_pendientes }}</div>
+                        <div class="kpi-meta">Facturas PPD sin liquidacion completa.</div>
+                    </article>
+                </section>
+            </div>
+        </section>
+
+        <section class="kpi-group" id="indicadores-operativos" aria-label="Indicadores operativos">
+            <div class="kpi-group-title">Indicadores operativos</div>
+            <section class="kpis-secondary">
+                <article class="kpi kpi-secondary">
+                    <div class="kpi-label">Vigentes</div>
+                    <div class="kpi-value">{{ summary.vigentes }}</div>
+                    <div class="kpi-meta">Estatus SAT vigente.</div>
+                </article>
+                <article class="kpi kpi-secondary">
+                    <div class="kpi-label">Canceladas</div>
+                    <div class="kpi-value">{{ summary.canceladas }}</div>
+                    <div class="kpi-meta">Registros cancelados.</div>
+                </article>
+                <article class="kpi kpi-secondary">
+                    <div class="kpi-label">Sin validacion SAT</div>
+                    <div class="kpi-value">{{ summary.sin_validacion_sat }}</div>
+                    <div class="kpi-meta">Consulta SAT inactiva.</div>
+                </article>
+                <article class="kpi kpi-secondary">
+                    <div class="kpi-label">Proveedores unicos</div>
+                    <div class="kpi-value">{{ summary.proveedores_unicos }}</div>
+                    <div class="kpi-meta">RFC emisores distintos.</div>
+                </article>
+                <article class="kpi kpi-secondary">
+                    <div class="kpi-label">Complementos sin relacion</div>
+                    <div class="kpi-value">{{ summary.complementos_sin_factura_relacionada }}</div>
+                    <div class="kpi-meta">Debe permanecer en cero.</div>
+                </article>
+            </section>
+        </section>
+
+        <section class="recommended-actions" aria-label="Acciones recomendadas">
+            <div class="recommended-actions-header">
+                <div>
+                    <div class="recommended-actions-title">Acciones recomendadas</div>
+                    <div class="recommended-actions-copy">Siguientes pasos sugeridos para priorizar correcciones y seguimiento.</div>
+                </div>
+                <span class="tag info">Maximo 3</span>
+            </div>
+            <div class="recommended-actions-list">
+                {% set recommendation_count = namespace(value=0) %}
+
+                {% if summary.facturas_pendientes > 0 and recommendation_count.value < 3 %}
+                    {% set recommendation_count.value = recommendation_count.value + 1 %}
+                    <article class="recommended-action">
+                        <strong>Problema detectado: hay facturas pendientes de pago.</strong>
+                        <span>Accion sugerida: revisar facturas pendientes de complemento de pago para actualizar su estado y seguimiento de cobro.</span>
+                        <a href="/dashboard-web#ultimos-cfdi">Ir a Ultimos CFDI</a>
+                    </article>
+                {% endif %}
+
+                {% if summary.riesgos_altos > 0 and recommendation_count.value < 3 %}
+                    {% set recommendation_count.value = recommendation_count.value + 1 %}
+                    <article class="recommended-action">
+                        <strong>Problema detectado: existen proveedores o CFDI con riesgo alto.</strong>
+                        <span>Accion sugerida: analizar los casos con mayor exposicion fiscal y validar si requieren seguimiento puntual.</span>
+                        <a href="/dashboard-web#proveedores-principales">Ir a Proveedores principales</a>
+                    </article>
+                {% endif %}
+
+                {% if summary.sin_validacion_sat > 0 and recommendation_count.value < 3 %}
+                    {% set recommendation_count.value = recommendation_count.value + 1 %}
+                    <article class="recommended-action">
+                        <strong>Problema detectado: hay CFDI sin validacion SAT.</strong>
+                        <span>Accion sugerida: validar CFDI pendientes contra SAT para reducir incertidumbre operativa y fiscal.</span>
+                        <a href="/dashboard-web#ultimos-cfdi">Ir a Ultimos CFDI</a>
+                    </article>
+                {% endif %}
+
+                {% if summary.complementos_sin_factura_relacionada > 0 and recommendation_count.value < 3 %}
+                    {% set recommendation_count.value = recommendation_count.value + 1 %}
+                    <article class="recommended-action">
+                        <strong>Problema detectado: existen complementos de pago sin factura relacionada.</strong>
+                        <span>Accion sugerida: corregir los complementos sin relacion para evitar saldos y estados de pago incompletos.</span>
+                        <a href="/dashboard-web#indicadores-operativos">Ir a Indicadores operativos</a>
+                    </article>
+                {% endif %}
+
+                {% if recommendation_count.value == 0 %}
+                    <div class="recommended-actions-empty">No hay alertas ejecutivas inmediatas. El tablero se ve estable para continuar con revision de detalle.</div>
+                {% endif %}
+            </div>
         </section>
 
         <section class="layout">
             <section class="stack">
-                <div class="security-card">
-                    <div class="security-copy">
-                        <strong>Verificacion en dos pasos</strong>
-                        <span>{{ two_factor_note }}</span>
-                    </div>
-                    <div class="security-actions">
-                        {% if two_factor_effective %}
-                            <span class="tag success">Activa</span>
-                        {% else %}
-                            <span class="tag warning">Inactiva</span>
-                        {% endif %}
-                        {% if can_toggle_two_factor %}
-                            <form action="/two-factor/toggle" method="post">
-                                <button class="toggle-button" type="submit">
-                                    {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-                </div>
+                <details class="settings-panel">
+                    <summary class="settings-toggle">
+                        <div class="settings-title">
+                            <strong>Configuracion</strong>
+                            <span>Controles operativos secundarios para acceso y validacion.</span>
+                        </div>
+                        <div class="settings-summary-badges">
+                            {% if two_factor_effective %}
+                                <span class="tag success">2FA activa</span>
+                            {% else %}
+                                <span class="tag warning">2FA inactiva</span>
+                            {% endif %}
+                            {% if sat_mode_effective %}
+                                <span class="tag success">SAT activo</span>
+                            {% else %}
+                                <span class="tag warning">SAT inactivo</span>
+                            {% endif %}
+                        </div>
+                    </summary>
+                    <div class="settings-body">
+                        <div class="settings-row">
+                            <div class="settings-copy">
+                                <strong>Verificacion en dos pasos</strong>
+                                <span>{{ two_factor_note }}</span>
+                            </div>
+                            <div class="settings-actions">
+                                {% if two_factor_effective %}
+                                    <span class="tag success">Activa</span>
+                                {% else %}
+                                    <span class="tag warning">Inactiva</span>
+                                {% endif %}
+                                {% if can_toggle_two_factor %}
+                                    <form action="/two-factor/toggle" method="post">
+                                        <button class="toggle-button" type="submit">
+                                            {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
 
-                <div class="security-card">
-                    <div class="security-copy">
-                        <strong>Modo SAT: {% if sat_mode_effective %}Activado{% else %}Desactivado{% endif %}</strong>
-                        <span>{{ sat_mode_note }}</span>
+                        <div class="settings-row">
+                            <div class="settings-copy">
+                                <strong>Modo SAT</strong>
+                                <span>{{ sat_mode_note }}</span>
+                            </div>
+                            <div class="settings-actions">
+                                {% if sat_mode_effective %}
+                                    <span class="tag success">Activo</span>
+                                {% else %}
+                                    <span class="tag warning">Inactivo</span>
+                                {% endif %}
+                                <form action="/sat-validation/toggle" method="post">
+                                    <button class="toggle-button" type="submit">
+                                        {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                    <div class="security-actions">
-                        {% if sat_mode_effective %}
-                            <span class="tag success">Activado</span>
-                        {% else %}
-                            <span class="tag warning">Desactivado</span>
-                        {% endif %}
-                        <form action="/sat-validation/toggle" method="post">
-                            <button class="toggle-button" type="submit">
-                                {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                </details>
 
                 <section class="panel" id="ultimos-cfdi">
                     <div class="panel-header">
@@ -1063,7 +1361,7 @@
                                 <strong>${{ "{:,.2f}".format(summary.total_impuestos_netos) }}</strong>
                             </article>
                         </div>
-                        <p class="subtitle" style="margin-top: 12px; max-width: none;">
+                        <p class="subtitle" style="margin-top: 8px; max-width: none;">
                             Esto es extraccion y resumen, no calculo fiscal profesional.
                         </p>
 
@@ -1116,14 +1414,14 @@
                                 <strong>{{ reports.resumen_riesgos | length }}</strong>
                             </article>
                         </div>
-                        <div class="report-actions" style="margin-top: 12px;">
+                        <div class="report-actions" style="margin-top: 8px;">
                             <a class="logout-button" href="{{ alertas_cfdi_url }}">Ver alertas por CFDI</a>
                             <a class="logout-button" href="{{ export_alertas_cfdi_url }}">Exportar alertas CFDI</a>
                             <a class="logout-button" href="{{ analisis_proveedor_url }}">Ver analisis por proveedor</a>
                             <a class="logout-button" href="{{ export_analisis_proveedor_url }}">Exportar analisis proveedor</a>
                         </div>
                         {% if reports.resumen_riesgos %}
-                            <div class="table-wrap dashboard-scroll-section" style="margin-top: 12px;">
+                            <div class="table-wrap dashboard-scroll-section" style="margin-top: 8px;">
                                 <table>
                                     <thead>
                                         <tr>
