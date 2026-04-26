@@ -14,6 +14,7 @@ class PaymentComplement(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), index=True, nullable=True)
     payment_invoice_id: Mapped[int] = mapped_column(ForeignKey("invoices.id"), index=True, nullable=False)
     related_invoice_uuid: Mapped[str | None] = mapped_column(String, index=True, default=None)
     fecha_pago: Mapped[str | None] = mapped_column(String, default=None)

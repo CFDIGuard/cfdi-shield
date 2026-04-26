@@ -14,6 +14,7 @@ class BankTransaction(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), index=True, nullable=True)
     fecha: Mapped[str | None] = mapped_column(String, index=True, default=None)
     descripcion: Mapped[str | None] = mapped_column(Text, default=None)
     referencia: Mapped[str | None] = mapped_column(String, default=None)

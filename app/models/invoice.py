@@ -14,6 +14,7 @@ class Invoice(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, nullable=False)
+    organization_id: Mapped[int | None] = mapped_column(ForeignKey("organizations.id"), index=True, nullable=True)
     uuid: Mapped[str] = mapped_column(String, index=True, nullable=False)
     archivo: Mapped[str | None] = mapped_column(String, default=None)
     tipo_comprobante: Mapped[str | None] = mapped_column(String, default=None)
