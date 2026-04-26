@@ -11,7 +11,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
-from app.core.csrf import get_session_secret
+from app.core.csrf import APP_SECRET_KEY
 from app.db.init_db import ensure_db_initialized
 from app.db.session import SessionLocal
 from app.resource_paths import resource_path
@@ -42,7 +42,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(
         SessionMiddleware,
-        secret_key=get_session_secret(),
+        secret_key=APP_SECRET_KEY,
         session_cookie="cfdi_shield_web_session",
         same_site="lax",
         https_only=settings.base_url.startswith("https://"),
