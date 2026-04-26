@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -12,9 +14,11 @@ from sqlalchemy.orm import Session
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+os.chdir(ROOT)
 
 from app.db.init_db import ensure_db_initialized
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
+from app.core.config import settings
 from app.models.organization import Organization, OrganizationMembership
 from app.models.user import User
 
@@ -30,6 +34,21 @@ class BackfillResult:
     invoices_updated: int = 0
     payment_complements_updated: int = 0
     bank_transactions_updated: int = 0
+
+
+def _resolve_sqlite_path(database_url: str) -> Path | None:
+    if not database_url.startswith("sqlite"):
+        return None
+
+    if database_url.startswith("sqlite:///./"):
+        return (ROOT / database_url.removeprefix("sqlite:///./")).resolve()
+    if database_url.startswith("sqlite:///"):
+        return Path(database_url.removeprefix("sqlite:///")).resolve()
+
+    parsed = urlparse(database_url)
+    if not parsed.path:
+        return None
+    return Path(unquote(parsed.path)).resolve()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -182,6 +201,12 @@ def _load_users(db: Session, user_id: int | None) -> list[User]:
 def _run(user_id: int | None, dry_run: bool) -> BackfillResult:
     ensure_db_initialized()
     result = BackfillResult()
+
+    logger.info("DATABASE_URL efectiva detectada | url=%s", settings.database_url)
+    sqlite_path = _resolve_sqlite_path(settings.database_url)
+    if sqlite_path is not None:
+        logger.info("Base SQLite detectada | path=%s", sqlite_path)
+    logger.info("Engine SQLAlchemy en uso | url=%s", str(engine.url))
 
     with SessionLocal() as db:
         users = _load_users(db, user_id)
