@@ -40,9 +40,9 @@
         }
 
         .shell {
-            width: min(1380px, calc(100% - 18px));
+            width: min(1280px, calc(100% - 24px));
             margin: 0 auto;
-            padding: 12px 0 18px;
+            padding: 14px 0 24px;
         }
 
         .topbar,
@@ -177,10 +177,10 @@
 
         .hero {
             margin-top: 10px;
-            padding: 14px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            padding: 16px 18px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.6fr) auto;
+            align-items: end;
             gap: 12px;
         }
 
@@ -263,9 +263,77 @@
         .alert.success { background: var(--success-soft); color: var(--success); }
         .alert.error { background: var(--danger-soft); color: var(--danger); }
 
-        .filters-panel {
+        .utility-bar {
             margin-top: 10px;
-            padding: 12px;
+            display: grid;
+            grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.92fr);
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .utility-card {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .utility-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            min-height: 86px;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .utility-summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .utility-heading {
+            display: grid;
+            gap: 3px;
+        }
+
+        .utility-heading strong {
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .utility-heading span {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.35;
+        }
+
+        .utility-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .utility-card[open] .utility-meta .ghost-button {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-color: rgba(37, 99, 235, 0.18);
+        }
+
+        .utility-body {
+            display: grid;
+            gap: 10px;
+            padding: 0 12px 12px;
+            border-top: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        .filters-panel {
             display: grid;
             gap: 10px;
         }
@@ -303,12 +371,12 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .kpis {
-            margin-top: 8px;
             display: grid;
-            grid-template-columns: repeat(6, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 6px;
         }
 
@@ -418,7 +486,6 @@
         }
 
         .recommended-actions {
-            margin-top: 8px;
             padding: 10px;
             border: 1px solid rgba(201, 215, 231, 0.98);
             border-radius: 8px;
@@ -492,16 +559,26 @@
             line-height: 1.35;
         }
 
-        .layout {
+        .dashboard-flow {
             margin-top: 8px;
             display: grid;
-            grid-template-columns: 1.45fr 1fr;
-            gap: 8px;
+            gap: 10px;
         }
 
-        .stack {
+        .paired-row {
             display: grid;
-            gap: 8px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            align-items: start;
+        }
+
+        .paired-row > .panel,
+        .dashboard-flow > .panel {
+            min-width: 0;
+        }
+
+        #conciliacion-bancaria .summary-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .settings-panel {
@@ -536,12 +613,6 @@
             color: var(--muted);
             line-height: 1.5;
             font-size: 12px;
-        }
-
-        .settings-body {
-            padding: 0 10px 10px;
-            border-top: 1px solid var(--line);
-            background: var(--surface-soft);
         }
 
         .settings-row {
@@ -785,6 +856,15 @@
         }
 
         @media (max-width: 1200px) {
+            .utility-bar,
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .paired-row {
+                grid-template-columns: 1fr;
+            }
+
             .kpis {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
@@ -792,19 +872,15 @@
             .kpis-secondary {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
             }
-
-            .layout {
-                grid-template-columns: 1fr;
-            }
         }
 
         @media (max-width: 820px) {
             .topbar,
-            .hero,
             .nav,
             .account,
             .toolbar,
-            .settings-toggle,
+            .hero,
+            .utility-summary,
             .settings-row,
             .settings-actions,
             .panel-header,
@@ -841,6 +917,11 @@
             <div class="account">
                 <span class="user-pill">{{ current_user.username }}</span>
                 <form action="/logout" method="post">
+                    {% if csrf_token is defined %}
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% else %}
+                        <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                    {% endif %}
                     <button class="logout-button" type="submit">Salir</button>
                 </form>
             </div>
@@ -872,79 +953,171 @@
             </div>
         </section>
 
-        <section class="panel filters-panel" aria-label="Filtros avanzados">
-            <div>
-                <div class="panel-title">Filtros avanzados</div>
-                <div class="panel-copy">Aplica los mismos filtros sobre dashboard, alertas por CFDI, analisis por proveedor y exportacion Excel.</div>
-            </div>
-            <form action="/dashboard-web" method="get">
-                <div class="filters-grid">
-                    <div class="field">
-                        <label for="rfc_receptor">RFC receptor</label>
-                        <input id="rfc_receptor" name="rfc_receptor" type="text" value="{{ filters.rfc_receptor or '' }}">
+        <section class="utility-bar" aria-label="Controles del dashboard">
+            <details class="utility-card filters-panel" {% if filters.cleaned() %}open{% endif %}>
+                <summary class="utility-summary">
+                    <div class="utility-heading">
+                        <strong>Filtros avanzados</strong>
+                        <span>Aplica el mismo contexto a dashboard, reportes y exportaciones sin ocupar toda la parte superior.</span>
                     </div>
-                    <div class="field">
-                        <label for="rfc_emisor">RFC emisor</label>
-                        <input id="rfc_emisor" name="rfc_emisor" type="text" value="{{ filters.rfc_emisor or '' }}">
+                    <div class="utility-meta">
+                        {% if filters.cleaned() %}
+                            <span class="tag info">{{ filters.cleaned() | length }} activos</span>
+                        {% else %}
+                            <span class="tag info">Sin filtros</span>
+                        {% endif %}
+                        <span class="ghost-button">Abrir</span>
                     </div>
-                    <div class="field">
-                        <label for="proveedor">Proveedor</label>
-                        <input id="proveedor" name="proveedor" type="text" value="{{ filters.proveedor or '' }}">
+                </summary>
+                <div class="utility-body">
+                    <form action="/dashboard-web" method="get">
+                        <div class="filters-grid">
+                            <div class="field">
+                                <label for="rfc_receptor">RFC receptor</label>
+                                <input id="rfc_receptor" name="rfc_receptor" type="text" value="{{ filters.rfc_receptor or '' }}">
+                            </div>
+                            <div class="field">
+                                <label for="rfc_emisor">RFC emisor</label>
+                                <input id="rfc_emisor" name="rfc_emisor" type="text" value="{{ filters.rfc_emisor or '' }}">
+                            </div>
+                            <div class="field">
+                                <label for="proveedor">Proveedor</label>
+                                <input id="proveedor" name="proveedor" type="text" value="{{ filters.proveedor or '' }}">
+                            </div>
+                            <div class="field">
+                                <label for="estatus_sat">Estatus SAT</label>
+                                <select id="estatus_sat" name="estatus_sat">
+                                    <option value="">Todos</option>
+                                    <option value="VIGENTE" {% if filters.estatus_sat == "VIGENTE" %}selected{% endif %}>VIGENTE</option>
+                                    <option value="CANCELADO" {% if filters.estatus_sat == "CANCELADO" %}selected{% endif %}>CANCELADO</option>
+                                    <option value="SIN_VALIDACION" {% if filters.estatus_sat == "SIN_VALIDACION" %}selected{% endif %}>SIN_VALIDACION</option>
+                                    <option value="NO_ENCONTRADO" {% if filters.estatus_sat == "NO_ENCONTRADO" %}selected{% endif %}>NO_ENCONTRADO</option>
+                                    <option value="ERROR" {% if filters.estatus_sat == "ERROR" %}selected{% endif %}>ERROR</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="riesgo">Nivel de riesgo</label>
+                                <select id="riesgo" name="riesgo">
+                                    <option value="">Todos</option>
+                                    <option value="BAJO" {% if filters.riesgo == "BAJO" %}selected{% endif %}>BAJO</option>
+                                    <option value="MEDIO" {% if filters.riesgo == "MEDIO" %}selected{% endif %}>MEDIO</option>
+                                    <option value="ALTO" {% if filters.riesgo == "ALTO" %}selected{% endif %}>ALTO</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="moneda">Moneda</label>
+                                <select id="moneda" name="moneda">
+                                    <option value="">Todas</option>
+                                    <option value="MXN" {% if filters.moneda == "MXN" %}selected{% endif %}>MXN</option>
+                                    <option value="USD" {% if filters.moneda == "USD" %}selected{% endif %}>USD</option>
+                                    <option value="EUR" {% if filters.moneda == "EUR" %}selected{% endif %}>EUR</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="fecha_desde">Fecha desde</label>
+                                <input id="fecha_desde" name="fecha_desde" type="date" value="{{ filters.fecha_desde or '' }}">
+                            </div>
+                            <div class="field">
+                                <label for="fecha_hasta">Fecha hasta</label>
+                                <input id="fecha_hasta" name="fecha_hasta" type="date" value="{{ filters.fecha_hasta or '' }}">
+                            </div>
+                        </div>
+                        <div class="filters-actions" style="margin-top: 8px;">
+                            <button class="button-link" type="submit">Aplicar filtros</button>
+                            <a class="logout-button" href="/dashboard-web">Limpiar filtros</a>
+                        </div>
+                    </form>
+                    <form action="/invoices/recalculate-payment-statuses" method="post" class="filters-actions">
+                        {% if csrf_token is defined %}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% else %}
+                            <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                        {% endif %}
+                        <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
+                        <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
+                        <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
+                        <input type="hidden" name="estatus_sat" value="{{ filters.estatus_sat or '' }}">
+                        <input type="hidden" name="riesgo" value="{{ filters.riesgo or '' }}">
+                        <input type="hidden" name="moneda" value="{{ filters.moneda or '' }}">
+                        <input type="hidden" name="fecha_desde" value="{{ filters.fecha_desde or '' }}">
+                        <input type="hidden" name="fecha_hasta" value="{{ filters.fecha_hasta or '' }}">
+                        <button class="ghost-button" type="submit">Recalcular estados de pago</button>
+                    </form>
+                </div>
+            </details>
+
+            <details class="utility-card settings-panel">
+                <summary class="utility-summary">
+                    <div class="utility-heading">
+                        <strong>Configuracion</strong>
+                        <span>Acceso y validacion en un panel secundario compacto, fuera del foco principal del tablero.</span>
                     </div>
-                    <div class="field">
-                        <label for="estatus_sat">Estatus SAT</label>
-                        <select id="estatus_sat" name="estatus_sat">
-                            <option value="">Todos</option>
-                            <option value="VIGENTE" {% if filters.estatus_sat == "VIGENTE" %}selected{% endif %}>VIGENTE</option>
-                            <option value="CANCELADO" {% if filters.estatus_sat == "CANCELADO" %}selected{% endif %}>CANCELADO</option>
-                            <option value="SIN_VALIDACION" {% if filters.estatus_sat == "SIN_VALIDACION" %}selected{% endif %}>SIN_VALIDACION</option>
-                            <option value="NO_ENCONTRADO" {% if filters.estatus_sat == "NO_ENCONTRADO" %}selected{% endif %}>NO_ENCONTRADO</option>
-                            <option value="ERROR" {% if filters.estatus_sat == "ERROR" %}selected{% endif %}>ERROR</option>
-                        </select>
+                    <div class="utility-meta">
+                        {% if two_factor_effective %}
+                            <span class="tag success">2FA activa</span>
+                        {% else %}
+                            <span class="tag warning">2FA inactiva</span>
+                        {% endif %}
+                        {% if sat_mode_effective %}
+                            <span class="tag success">SAT activo</span>
+                        {% else %}
+                            <span class="tag warning">SAT inactivo</span>
+                        {% endif %}
+                        <span class="ghost-button">Abrir</span>
                     </div>
-                    <div class="field">
-                        <label for="riesgo">Nivel de riesgo</label>
-                        <select id="riesgo" name="riesgo">
-                            <option value="">Todos</option>
-                            <option value="BAJO" {% if filters.riesgo == "BAJO" %}selected{% endif %}>BAJO</option>
-                            <option value="MEDIO" {% if filters.riesgo == "MEDIO" %}selected{% endif %}>MEDIO</option>
-                            <option value="ALTO" {% if filters.riesgo == "ALTO" %}selected{% endif %}>ALTO</option>
-                        </select>
+                </summary>
+                <div class="utility-body">
+                    <div class="settings-row">
+                        <div class="settings-copy">
+                            <strong>Verificacion en dos pasos</strong>
+                            <span>{{ two_factor_note }}</span>
+                        </div>
+                        <div class="settings-actions">
+                            {% if two_factor_effective %}
+                                <span class="tag success">Activa</span>
+                            {% else %}
+                                <span class="tag warning">Inactiva</span>
+                            {% endif %}
+                            {% if can_toggle_two_factor %}
+                                <form action="/two-factor/toggle" method="post">
+                                    {% if csrf_token is defined %}
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    {% else %}
+                                        <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                                    {% endif %}
+                                    <button class="toggle-button" type="submit">
+                                        {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="field">
-                        <label for="moneda">Moneda</label>
-                        <select id="moneda" name="moneda">
-                            <option value="">Todas</option>
-                            <option value="MXN" {% if filters.moneda == "MXN" %}selected{% endif %}>MXN</option>
-                            <option value="USD" {% if filters.moneda == "USD" %}selected{% endif %}>USD</option>
-                            <option value="EUR" {% if filters.moneda == "EUR" %}selected{% endif %}>EUR</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label for="fecha_desde">Fecha desde</label>
-                        <input id="fecha_desde" name="fecha_desde" type="date" value="{{ filters.fecha_desde or '' }}">
-                    </div>
-                    <div class="field">
-                        <label for="fecha_hasta">Fecha hasta</label>
-                        <input id="fecha_hasta" name="fecha_hasta" type="date" value="{{ filters.fecha_hasta or '' }}">
+
+                    <div class="settings-row">
+                        <div class="settings-copy">
+                            <strong>Modo SAT</strong>
+                            <span>{{ sat_mode_note }}</span>
+                        </div>
+                        <div class="settings-actions">
+                            {% if sat_mode_effective %}
+                                <span class="tag success">Activo</span>
+                            {% else %}
+                                <span class="tag warning">Inactivo</span>
+                            {% endif %}
+                            <form action="/sat-validation/toggle" method="post">
+                                {% if csrf_token is defined %}
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                {% else %}
+                                    <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                                {% endif %}
+                                <button class="toggle-button" type="submit">
+                                    {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
-                <div class="filters-actions" style="margin-top: 8px;">
-                    <button class="button-link" type="submit">Aplicar filtros</button>
-                    <a class="logout-button" href="/dashboard-web">Limpiar filtros</a>
-                </div>
-            </form>
-            <form action="/invoices/recalculate-payment-statuses" method="post" class="filters-actions">
-                <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
-                <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
-                <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
-                <input type="hidden" name="estatus_sat" value="{{ filters.estatus_sat or '' }}">
-                <input type="hidden" name="riesgo" value="{{ filters.riesgo or '' }}">
-                <input type="hidden" name="moneda" value="{{ filters.moneda or '' }}">
-                <input type="hidden" name="fecha_desde" value="{{ filters.fecha_desde or '' }}">
-                <input type="hidden" name="fecha_hasta" value="{{ filters.fecha_hasta or '' }}">
-                <button class="ghost-button" type="submit">Recalcular estados de pago</button>
-            </form>
+            </details>
         </section>
 
         {% if message %}
@@ -1098,71 +1271,8 @@
             </div>
         </section>
 
-        <section class="layout">
-            <section class="stack">
-                <details class="settings-panel">
-                    <summary class="settings-toggle">
-                        <div class="settings-title">
-                            <strong>Configuracion</strong>
-                            <span>Controles operativos secundarios para acceso y validacion.</span>
-                        </div>
-                        <div class="settings-summary-badges">
-                            {% if two_factor_effective %}
-                                <span class="tag success">2FA activa</span>
-                            {% else %}
-                                <span class="tag warning">2FA inactiva</span>
-                            {% endif %}
-                            {% if sat_mode_effective %}
-                                <span class="tag success">SAT activo</span>
-                            {% else %}
-                                <span class="tag warning">SAT inactivo</span>
-                            {% endif %}
-                        </div>
-                    </summary>
-                    <div class="settings-body">
-                        <div class="settings-row">
-                            <div class="settings-copy">
-                                <strong>Verificacion en dos pasos</strong>
-                                <span>{{ two_factor_note }}</span>
-                            </div>
-                            <div class="settings-actions">
-                                {% if two_factor_effective %}
-                                    <span class="tag success">Activa</span>
-                                {% else %}
-                                    <span class="tag warning">Inactiva</span>
-                                {% endif %}
-                                {% if can_toggle_two_factor %}
-                                    <form action="/two-factor/toggle" method="post">
-                                        <button class="toggle-button" type="submit">
-                                            {% if current_user.two_factor_enabled %}Desactivar 2FA{% else %}Activar 2FA{% endif %}
-                                        </button>
-                                    </form>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="settings-row">
-                            <div class="settings-copy">
-                                <strong>Modo SAT</strong>
-                                <span>{{ sat_mode_note }}</span>
-                            </div>
-                            <div class="settings-actions">
-                                {% if sat_mode_effective %}
-                                    <span class="tag success">Activo</span>
-                                {% else %}
-                                    <span class="tag warning">Inactivo</span>
-                                {% endif %}
-                                <form action="/sat-validation/toggle" method="post">
-                                    <button class="toggle-button" type="submit">
-                                        {% if use_sat_validation %}Desactivar SAT{% else %}Activar SAT{% endif %}
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </details>
-
-                <section class="panel" id="ultimos-cfdi">
+        <section class="dashboard-flow">
+            <section class="panel" id="ultimos-cfdi">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Ultimos 8 CFDI</div>
@@ -1245,6 +1355,11 @@
                                             <td>
                                                 <div class="inline-actions">
                                                     <form action="/invoices/{{ invoice.id }}/recalculate-payment-status" method="post">
+                                                        {% if csrf_token is defined %}
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        {% else %}
+                                                            <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                                                        {% endif %}
                                                         <input type="hidden" name="rfc_receptor" value="{{ filters.rfc_receptor or '' }}">
                                                         <input type="hidden" name="rfc_emisor" value="{{ filters.rfc_emisor or '' }}">
                                                         <input type="hidden" name="proveedor" value="{{ filters.proveedor or '' }}">
@@ -1256,6 +1371,11 @@
                                                         <button class="ghost-button" type="submit">Recalcular pago</button>
                                                     </form>
                                                     <form action="/invoices/{{ invoice.id }}/delete" method="post" onsubmit="return confirm('Deseas eliminar esta factura?');">
+                                                        {% if csrf_token is defined %}
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                        {% else %}
+                                                            <!-- TODO: CSRF token integration pendiente (security pass global) -->
+                                                        {% endif %}
                                                         <button class="delete-button" type="submit">Eliminar</button>
                                                     </form>
                                                 </div>
@@ -1268,8 +1388,9 @@
                     {% else %}
                         <div class="empty">No hay facturas aun.</div>
                     {% endif %}
-                </section>
+            </section>
 
+            <section class="paired-row" aria-label="Analisis central del dashboard">
                 <section class="panel" id="proveedores-principales">
                     <div class="panel-header">
                         <div>
@@ -1327,10 +1448,8 @@
                         <div class="empty">Todavia no hay proveedores para mostrar.</div>
                     {% endif %}
                 </section>
-            </section>
 
-            <section class="stack">
-                <section class="panel">
+                <section class="panel" id="panorama-general">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Panorama general</div>
@@ -1394,8 +1513,9 @@
                         </div>
                     </div>
                 </section>
+            </section>
 
-                <section class="panel" id="reportes-fiscales">
+            <section class="panel" id="reportes-fiscales">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Alertas por CFDI y analisis por proveedor</div>
@@ -1448,39 +1568,9 @@
                             <div class="empty">Todavia no hay alertas por CFDI o proveedores en analisis.</div>
                         {% endif %}
                     </div>
-                </section>
+            </section>
 
-                <section class="panel" id="conciliacion-bancaria">
-                    <div class="panel-header">
-                        <div>
-                            <div class="panel-title">Conciliacion bancaria</div>
-                            <div class="panel-copy">Cruce de movimientos bancarios contra CFDI del usuario actual.</div>
-                        </div>
-                        <a class="logout-button" href="/reconciliation">Ver conciliacion</a>
-                    </div>
-                    <div class="panel-body">
-                        <div class="summary-grid">
-                            <article class="mini-metric">
-                                <span>Total movimientos</span>
-                                <strong>{{ reconciliation_summary.total_movimientos }}</strong>
-                            </article>
-                            <article class="mini-metric">
-                                <span>Conciliados</span>
-                                <strong>{{ reconciliation_summary.conciliados }}</strong>
-                            </article>
-                            <article class="mini-metric">
-                                <span>Posibles</span>
-                                <strong>{{ reconciliation_summary.posibles }}</strong>
-                            </article>
-                            <article class="mini-metric">
-                                <span>Pendientes</span>
-                                <strong>{{ reconciliation_summary.pendientes }}</strong>
-                            </article>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="panel" id="riesgos-detectados">
+            <section class="panel" id="riesgos-detectados">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Riesgos destacados</div>
@@ -1536,9 +1626,39 @@
                             <div class="empty">No hay alertas altas registradas.</div>
                         {% endif %}
                     </div>
-                </section>
+            </section>
 
-                <section class="panel" id="resumen-periodo">
+            <section class="panel" id="conciliacion-bancaria">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Conciliacion bancaria</div>
+                            <div class="panel-copy">Cruce de movimientos bancarios contra CFDI del usuario actual.</div>
+                        </div>
+                        <a class="logout-button" href="/reconciliation">Ver conciliacion</a>
+                    </div>
+                    <div class="panel-body">
+                        <div class="summary-grid">
+                            <article class="mini-metric">
+                                <span>Total movimientos</span>
+                                <strong>{{ reconciliation_summary.total_movimientos }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Conciliados</span>
+                                <strong>{{ reconciliation_summary.conciliados }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Posibles</span>
+                                <strong>{{ reconciliation_summary.posibles }}</strong>
+                            </article>
+                            <article class="mini-metric">
+                                <span>Pendientes</span>
+                                <strong>{{ reconciliation_summary.pendientes }}</strong>
+                            </article>
+                        </div>
+                    </div>
+            </section>
+
+            <section class="panel" id="resumen-periodo">
                     <div class="panel-header">
                         <div>
                             <div class="panel-title">Resumen por periodo</div>
@@ -1575,7 +1695,6 @@
                     {% else %}
                         <div class="empty">Todavia no hay periodos acumulados.</div>
                     {% endif %}
-                </section>
             </section>
         </section>
     </main>
