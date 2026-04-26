@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 
+from app.schemas.payment_complement import PaymentComplementReportRow
+
 
 class ProviderSummary(BaseModel):
     rfc_emisor: str
@@ -134,6 +136,10 @@ class DashboardSummary(BaseModel):
     riesgos: list[RiskSummary]
     rr1_count: int = 0
     rr9_count: int = 0
+    facturas_pagadas: int = 0
+    facturas_parciales: int = 0
+    facturas_pendientes: int = 0
+    complementos_sin_factura_relacionada: int = 0
     rr9_alertas: list[FiscalRiskSupplierRow] = []
 
 
@@ -145,3 +151,4 @@ class ReportsBundle(BaseModel):
     rr1: list[FiscalRiskInvoiceRow] = []
     rr9: list[FiscalRiskSupplierRow] = []
     resumen_riesgos: list[FiscalRiskMetricRow] = []
+    complementos_pago: list[PaymentComplementReportRow] = []

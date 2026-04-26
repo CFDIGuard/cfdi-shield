@@ -142,6 +142,7 @@ def resolve_exchange_rate(
 ) -> ExchangeRateResult:
     normalized_currency = _normalize_currency(moneda_original)
     invoice_date = _invoice_date(fecha_emision)
+    total_decimal = _to_decimal(total_original) or Decimal("0")
 
     if normalized_currency == "MXN":
         return _build_result(
@@ -149,6 +150,23 @@ def resolve_exchange_rate(
             total_original=total_original,
             tipo_cambio_usado=1.0,
             fuente_tipo_cambio="MXN",
+            fecha_tipo_cambio=invoice_date,
+        )
+
+    if total_decimal == Decimal("0"):
+        if tipo_cambio_xml and tipo_cambio_xml > 0:
+            return ExchangeRateResult(
+                moneda_original=normalized_currency,
+                tipo_cambio_usado=float(tipo_cambio_xml),
+                total_mxn=0.0,
+                fuente_tipo_cambio="XML",
+                fecha_tipo_cambio=invoice_date,
+            )
+        return ExchangeRateResult(
+            moneda_original=normalized_currency,
+            tipo_cambio_usado=None,
+            total_mxn=0.0,
+            fuente_tipo_cambio="SIN_TOTAL",
             fecha_tipo_cambio=invoice_date,
         )
 

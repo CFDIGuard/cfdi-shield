@@ -48,3 +48,51 @@ def test_parse_cfdi_xml_extrae_datos_basicos():
     assert data.total_impuestos_retenidos == 14
     assert data.moneda == "MXN"
     assert data.metodo_pago == "PUE"
+
+
+def test_parse_cfdi_xml_complemento_pago():
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+                  xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+                  xmlns:pagos20="http://www.sat.gob.mx/Pagos20"
+                  Total="0"
+                  SubTotal="0"
+                  Moneda="XXX"
+                  TipoDeComprobante="P"
+                  Fecha="2024-06-15T12:00:00">
+  <cfdi:Emisor Rfc="AAA010101AAA" Nombre="Proveedor Demo" />
+  <cfdi:Receptor Rfc="BBB010101BBB" />
+  <cfdi:Complemento>
+    <pagos20:Pagos Version="2.0">
+      <pagos20:Pago FechaPago="2024-06-15T11:00:00" MonedaP="MXN" Monto="580.00">
+        <pagos20:DoctoRelacionado
+            IdDocumento="aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa"
+            Serie="A"
+            Folio="100"
+            MonedaDR="MXN"
+            NumParcialidad="1"
+            ImpSaldoAnt="1160.00"
+            ImpPagado="580.00"
+            ImpSaldoInsoluto="580.00"
+            ObjetoImpDR="02" />
+      </pagos20:Pago>
+    </pagos20:Pagos>
+    <tfd:TimbreFiscalDigital UUID="123e4567-e89b-12d3-a456-426614174001" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>
+"""
+
+    data = parse_cfdi_xml(xml)
+
+    assert data.tipo_comprobante == "P"
+    assert data.total == 0
+    assert len(data.payment_complements) == 1
+    payment = data.payment_complements[0]
+    assert payment.related_invoice_uuid == "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA"
+    assert payment.fecha_pago == "2024-06-15T11:00:00"
+    assert payment.moneda_pago == "MXN"
+    assert payment.monto_pago == 580
+    assert payment.parcialidad == 1
+    assert payment.saldo_anterior == 1160
+    assert payment.importe_pagado == 580
+    assert payment.saldo_insoluto == 580

@@ -83,6 +83,9 @@ def upload_xml(
 
     try:
         invoice = repository.create(invoice_data)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(
@@ -161,7 +164,11 @@ def refresh_sat_status(
         estatus_sat=sat_result.estatus,
         provider_invoice_count=provider_stats["facturas"],
         provider_cancelled_count=provider_stats["canceladas"],
-        has_same_rfc_total=repository.exists_same_rfc_total(invoice.rfc_emisor or "", invoice.total),
+        has_same_rfc_total=(
+            False
+            if str(invoice.tipo_comprobante or "").upper() == "P"
+            else repository.exists_same_rfc_total(invoice.rfc_emisor or "", invoice.total)
+        ),
         high_amount_threshold=repository.get_high_amount_threshold(),
     )
     riesgo = calculate_risk_level(risk_types, sat_result.estatus, invoice.total)

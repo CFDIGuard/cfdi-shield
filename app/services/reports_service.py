@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 
 from app.models.invoice import Invoice
+from app.models.payment_complement import PaymentComplement
 from app.services.fiscal_risk_reports_service import build_fiscal_risk_reports
 from app.services.supplier_score import calculate_supplier_score
 
@@ -23,6 +24,39 @@ def _mxn_amount(invoice: Invoice) -> float:
     if currency == "MXN":
         return float(invoice.total_original or invoice.total or 0)
     return 0.0
+
+
+def _non_payment_invoices(invoices: list[Invoice]) -> list[Invoice]:
+    return [invoice for invoice in invoices if str(invoice.tipo_comprobante or "").upper() != "P"]
+
+
+def _build_payment_complements_report(
+    invoices: list[Invoice],
+    payment_complements: list[PaymentComplement],
+) -> list[dict[str, object]]:
+    invoice_by_id = {invoice.id: invoice for invoice in invoices}
+    invoice_by_uuid = {invoice.uuid: invoice for invoice in invoices if invoice.uuid}
+    rows: list[dict[str, object]] = []
+
+    for complement in sorted(payment_complements, key=lambda item: (item.fecha_pago or "", item.created_at), reverse=True):
+        payment_invoice = invoice_by_id.get(complement.payment_invoice_id)
+        related_invoice = invoice_by_uuid.get(str(complement.related_invoice_uuid or "").upper())
+        rows.append(
+            {
+                "uuid_complemento": payment_invoice.uuid if payment_invoice is not None else "-",
+                "uuid_factura_relacionada": complement.related_invoice_uuid,
+                "fecha_pago": complement.fecha_pago,
+                "monto_pago": float(complement.monto_pago or 0),
+                "moneda_pago": complement.moneda_pago,
+                "parcialidad": complement.parcialidad,
+                "saldo_anterior": float(complement.saldo_anterior or 0),
+                "importe_pagado": float(complement.importe_pagado or 0),
+                "saldo_insoluto": float(complement.saldo_insoluto or 0),
+                "estado_relacion": "RELACIONADA" if related_invoice is not None else "PENDIENTE",
+            }
+        )
+
+    return rows
 
 
 def _build_provider_report(invoices: list[Invoice]) -> list[dict[str, object]]:
@@ -229,12 +263,18 @@ def _build_resumen_report(invoices: list[Invoice]) -> list[dict[str, object]]:
     return resumen
 
 
-def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
+def build_reports_bundle(
+    invoices: list[Invoice],
+    payment_complements: list[PaymentComplement] | None = None,
+) -> dict[str, object]:
+    payment_complements = payment_complements or []
+    payment_status_invoices = _non_payment_invoices(invoices)
     resumen = _build_resumen_report(invoices)
     control = _build_control_report(invoices)
     proveedores = _build_provider_report(invoices)
     riesgos = _build_risk_report(invoices)
     fiscal_risk_reports = build_fiscal_risk_reports(invoices)
+    complementos_pago = _build_payment_complements_report(invoices, payment_complements)
 
     total_facturado = float(sum(_mxn_amount(invoice) for invoice in invoices))
     total_iva = float(sum(_iva_trasladado(invoice) for invoice in invoices))
@@ -251,6 +291,12 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
     riesgo_medio = sum(1 for invoice in invoices if str(invoice.riesgo or "").upper() == "MEDIO")
     riesgo_bajo = sum(1 for invoice in invoices if str(invoice.riesgo or "").upper() == "BAJO")
     proveedores_unicos = len({invoice.rfc_emisor for invoice in invoices if invoice.rfc_emisor})
+    facturas_pagadas = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PAGADA")
+    facturas_parciales = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PARCIAL")
+    facturas_pendientes = sum(1 for invoice in payment_status_invoices if str(invoice.estado_pago or "").upper() == "PENDIENTE")
+    complementos_sin_factura_relacionada = sum(
+        1 for row in complementos_pago if str(row.get("estado_relacion") or "").upper() != "RELACIONADA"
+    )
 
     return {
         "summary": {
@@ -273,6 +319,10 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
             "riesgos": [row for row in riesgos if row["riesgo"] == "ALTO"][:8],
             "rr1_count": len(fiscal_risk_reports["rr1"]),
             "rr9_count": len(fiscal_risk_reports["rr9"]),
+            "facturas_pagadas": facturas_pagadas,
+            "facturas_parciales": facturas_parciales,
+            "facturas_pendientes": facturas_pendientes,
+            "complementos_sin_factura_relacionada": complementos_sin_factura_relacionada,
             "rr9_alertas": [
                 row for row in fiscal_risk_reports["rr9"] if str(row.get("riesgo_acumulado", "")).upper() in {"ALTO", "MEDIO"}
             ][:8],
@@ -285,9 +335,13 @@ def build_reports_bundle(invoices: list[Invoice]) -> dict[str, object]:
             "rr1": fiscal_risk_reports["rr1"],
             "rr9": fiscal_risk_reports["rr9"],
             "resumen_riesgos": fiscal_risk_reports["resumen_riesgos"],
+            "complementos_pago": complementos_pago,
         },
     }
 
 
-def build_dashboard_summary(invoices: list[Invoice]) -> dict[str, object]:
-    return build_reports_bundle(invoices)["summary"]
+def build_dashboard_summary(
+    invoices: list[Invoice],
+    payment_complements: list[PaymentComplement] | None = None,
+) -> dict[str, object]:
+    return build_reports_bundle(invoices, payment_complements)["summary"]

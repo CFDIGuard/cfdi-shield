@@ -17,6 +17,7 @@ from app.models.invoice import Invoice
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.invoice import InvoiceCreate
+from app.schemas.payment_complement import PaymentComplementProcessedData
 from app.services.auth_service import create_session_token, hash_password
 import app.web_deps as web_deps_module
 
@@ -87,6 +88,25 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         invoice_a2_payload.riesgo = "BAJO"
         invoice_a2_payload.detalle_riesgo = ""
         repo_a.create(invoice_a2_payload)
+
+        payment_a_payload = _make_invoice(user_a.id, "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA", 0.0, "Proveedor A")
+        payment_a_payload.tipo_comprobante = "P"
+        payment_a_payload.moneda = "XXX"
+        payment_a_payload.moneda_original = "XXX"
+        payment_a_payload.metodo_pago = "PPD"
+        payment_a_payload.payment_complements = [
+            PaymentComplementProcessedData(
+                related_invoice_uuid=invoice_a.uuid,
+                fecha_pago="2026-04-25T11:00:00",
+                moneda_pago="MXN",
+                monto_pago=100.0,
+                parcialidad=1,
+                saldo_anterior=100.0,
+                importe_pagado=100.0,
+                saldo_insoluto=0.0,
+            )
+        ]
+        repo_a.create(payment_a_payload)
 
         invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
         invoice_b_payload.estatus_sat = "SIN_VALIDACION"
@@ -265,6 +285,24 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     )
     assert "Pago Proveedor A AAA010101AAA" not in reconciliation_values_b
     assert "Movimiento sin match" not in reconciliation_values_b
+
+    complement_sheet_a = workbook_a["COMPLEMENTOS_PAGO"]
+    complement_values_a = "\n".join(
+        "" if cell is None else str(cell)
+        for row in complement_sheet_a.iter_rows(values_only=True)
+        for cell in row
+    )
+    assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" in complement_values_a
+    assert "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA" in complement_values_a
+    assert "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB" not in complement_values_a
+
+    complement_sheet_b = workbook_b["COMPLEMENTOS_PAGO"]
+    complement_values_b = "\n".join(
+        "" if cell is None else str(cell)
+        for row in complement_sheet_b.iter_rows(values_only=True)
+        for cell in row
+    )
+    assert "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA" not in complement_values_b
 
     filtered_reconciliation_export = client.get(
         "/reconciliation/export-excel?origen=MANUAL&busqueda=Proveedor%20A2",

@@ -6,12 +6,15 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from app.schemas.invoice import InvoiceProcessedData
+from app.schemas.payment_complement import PaymentComplementProcessedData
 
 
 CFDI_NS = {
     "cfdi": "http://www.sat.gob.mx/cfd/4",
     "cfdi3": "http://www.sat.gob.mx/cfd/3",
     "tfd": "http://www.sat.gob.mx/TimbreFiscalDigital",
+    "pagos20": "http://www.sat.gob.mx/Pagos20",
+    "pagos10": "http://www.sat.gob.mx/Pagos",
 }
 RFC_REGEX = re.compile(r"^[A-Z&]{3,4}[0-9]{6}[A-Z0-9]{3}$")
 UUID_REGEX = re.compile(
@@ -89,6 +92,37 @@ def _extract_tax_amounts(
     )
 
 
+def _extract_payment_docto_tax_amounts(
+    impuestos_dr: ET.Element | None,
+) -> tuple[Decimal, Decimal]:
+    if impuestos_dr is None:
+        zero = Decimal("0")
+        return zero, zero
+
+    total_trasladados = Decimal("0")
+    total_retenidos = Decimal("0")
+
+    for traslado in _findall_first(
+        impuestos_dr,
+        [
+            "pagos20:TrasladosDR/pagos20:TrasladoDR",
+            ".//pagos20:TrasladoDR",
+        ],
+    ):
+        total_trasladados += _decimal_value(traslado.attrib.get("ImporteDR"))
+
+    for retencion in _findall_first(
+        impuestos_dr,
+        [
+            "pagos20:RetencionesDR/pagos20:RetencionDR",
+            ".//pagos20:RetencionDR",
+        ],
+    ):
+        total_retenidos += _decimal_value(retencion.attrib.get("ImporteDR"))
+
+    return total_trasladados, total_retenidos
+
+
 def _float_value(value: str | None) -> float:
     return float(_decimal_value(value))
 
@@ -115,6 +149,15 @@ def _safe_float(value: str | None) -> float | None:
         return None
 
 
+def _safe_int(value: str | None) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
 def _build_month(fecha_emision: str | None) -> str | None:
     if not fecha_emision:
         return None
@@ -133,8 +176,60 @@ def _validate_required_fields(data: InvoiceProcessedData) -> None:
         raise ValueError("El RFC emisor es invalido.")
     if not data.rfc_receptor or not RFC_REGEX.match(data.rfc_receptor):
         raise ValueError("El RFC receptor es invalido.")
+    if str(data.tipo_comprobante or "").upper() == "P":
+        if not data.payment_complements:
+            raise ValueError("El complemento de pago no contiene documentos relacionados.")
+        if not any(float(item.importe_pagado or item.monto_pago or 0) > 0 for item in data.payment_complements):
+            raise ValueError("El complemento de pago no contiene montos validos.")
+        return
     if data.total <= 0:
         raise ValueError("El total del CFDI debe ser mayor a cero.")
+
+
+def _payment_nodes(root: ET.Element) -> list[ET.Element]:
+    return _findall_first(root, [".//pagos20:Pago", ".//pagos10:Pago"])
+
+
+def _extract_payment_complements(root: ET.Element) -> list[PaymentComplementProcessedData]:
+    complements: list[PaymentComplementProcessedData] = []
+
+    for pago in _payment_nodes(root):
+        fecha_pago = pago.attrib.get("FechaPago")
+        moneda_pago = _safe_upper(pago.attrib.get("MonedaP")) or None
+        tipo_cambio_pago = _safe_float(pago.attrib.get("TipoCambioP"))
+        monto_pago_decimal = _decimal_value(pago.attrib.get("Monto"))
+
+        doctos_relacionados = _findall_first(
+            pago,
+            ["pagos20:DoctoRelacionado", "pagos10:DoctoRelacionado"],
+        )
+        for docto in doctos_relacionados:
+            impuestos_dr = _find_first(
+                docto,
+                ["pagos20:ImpuestosDR", "pagos10:ImpuestosDR"],
+            )
+            total_trasladados_dr, total_retenidos_dr = _extract_payment_docto_tax_amounts(impuestos_dr)
+            complements.append(
+                PaymentComplementProcessedData(
+                    related_invoice_uuid=_safe_upper(docto.attrib.get("IdDocumento")) or None,
+                    fecha_pago=fecha_pago,
+                    moneda_pago=moneda_pago,
+                    tipo_cambio_pago=tipo_cambio_pago,
+                    monto_pago=float(monto_pago_decimal),
+                    parcialidad=_safe_int(docto.attrib.get("NumParcialidad")),
+                    saldo_anterior=float(_decimal_value(docto.attrib.get("ImpSaldoAnt"))),
+                    importe_pagado=float(_decimal_value(docto.attrib.get("ImpPagado"))),
+                    saldo_insoluto=float(_decimal_value(docto.attrib.get("ImpSaldoInsoluto"))),
+                    serie=str(docto.attrib.get("Serie", "")).strip() or None,
+                    folio=str(docto.attrib.get("Folio", "")).strip() or None,
+                    moneda_documento_relacionado=_safe_upper(docto.attrib.get("MonedaDR")) or None,
+                    objeto_impuesto_dr=str(docto.attrib.get("ObjetoImpDR", "")).strip() or None,
+                    impuestos_dr_trasladados=float(total_trasladados_dr),
+                    impuestos_dr_retenidos=float(total_retenidos_dr),
+                )
+            )
+
+    return complements
 
 
 def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoiceProcessedData:
@@ -154,8 +249,10 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
     descuento = _decimal_value(root.attrib.get("Descuento"))
     total = _decimal_value(root.attrib.get("Total"))
     fecha_emision = root.attrib.get("Fecha")
+    tipo_comprobante = _safe_upper(root.attrib.get("TipoDeComprobante")) or None
     moneda_original = _safe_upper(root.attrib.get("Moneda")) or "MXN"
     tipo_cambio_xml = _safe_float(root.attrib.get("TipoCambio"))
+    payment_complements = _extract_payment_complements(root)
 
     impuestos_root = _find_first(root, ["cfdi:Impuestos", "cfdi3:Impuestos"])
     (
@@ -186,6 +283,7 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
     data = InvoiceProcessedData(
         archivo=filename,
         uuid=_safe_upper(timbre.attrib.get("UUID")),
+        tipo_comprobante=tipo_comprobante,
         razon_social=str(emisor.attrib.get("Nombre", "")).strip(),
         rfc_emisor=_safe_upper(emisor.attrib.get("Rfc")),
         rfc_receptor=_safe_upper(receptor.attrib.get("Rfc")),
@@ -207,6 +305,7 @@ def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoicePro
         moneda_original=moneda_original,
         tipo_cambio_xml=tipo_cambio_xml,
         metodo_pago=str(root.attrib.get("MetodoPago", "")).strip() or None,
+        payment_complements=payment_complements,
     )
     _validate_required_fields(data)
     return data

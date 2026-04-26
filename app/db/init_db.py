@@ -5,7 +5,7 @@ from sqlalchemy import inspect, text
 
 from app.db.base import Base
 from app.db.session import engine
-from app.models import BankTransaction, Invoice, SatValidationCache, User
+from app.models import BankTransaction, Invoice, PaymentComplement, SatValidationCache, User
 
 
 logger = logging.getLogger(__name__)
@@ -119,6 +119,7 @@ def _ensure_invoice_columns() -> None:
     statements = {
         "user_id": _add_column_statement("invoices", "user_id", "INTEGER"),
         "archivo": _add_column_statement("invoices", "archivo", "VARCHAR"),
+        "tipo_comprobante": _add_column_statement("invoices", "tipo_comprobante", "VARCHAR"),
         "razon_social": _add_column_statement("invoices", "razon_social", "VARCHAR"),
         "folio": _add_column_statement("invoices", "folio", "VARCHAR"),
         "fecha_emision": _add_column_statement("invoices", "fecha_emision", "VARCHAR"),
@@ -144,6 +145,9 @@ def _ensure_invoice_columns() -> None:
         "fuente_tipo_cambio": _add_column_statement("invoices", "fuente_tipo_cambio", "VARCHAR"),
         "fecha_tipo_cambio": _add_column_statement("invoices", "fecha_tipo_cambio", "VARCHAR"),
         "metodo_pago": _add_column_statement("invoices", "metodo_pago", "VARCHAR"),
+        "total_pagado": _add_column_statement("invoices", "total_pagado", "FLOAT", _float_default(0)),
+        "saldo_pendiente": _add_column_statement("invoices", "saldo_pendiente", "FLOAT"),
+        "estado_pago": _add_column_statement("invoices", "estado_pago", "VARCHAR", "'SIN_RELACION'"),
         "score_proveedor": _add_column_statement(
             "invoices", "score_proveedor", "FLOAT", _float_default(0)
         ),
@@ -171,6 +175,42 @@ def _ensure_invoice_columns() -> None:
                     "WHERE COALESCE(iva_trasladado, 0) = 0 AND COALESCE(iva, 0) <> 0"
                 )
             )
+            if "tipo_comprobante" in columns:
+                connection.execute(
+                    text(
+                        "UPDATE invoices "
+                        "SET tipo_comprobante = 'I' "
+                        "WHERE tipo_comprobante IS NULL OR tipo_comprobante = ''"
+                    )
+                )
+            if {"estado_pago", "metodo_pago"}.issubset(columns):
+                connection.execute(
+                    text(
+                        "UPDATE invoices "
+                        "SET estado_pago = CASE "
+                        "WHEN tipo_comprobante = 'P' THEN 'SIN_RELACION' "
+                        "WHEN UPPER(COALESCE(metodo_pago, '')) = 'PPD' THEN 'PENDIENTE' "
+                        "ELSE 'SIN_RELACION' "
+                        "END "
+                        "WHERE estado_pago IS NULL OR estado_pago = ''"
+                    )
+                )
+            if "total_pagado" in columns:
+                connection.execute(
+                    text(
+                        "UPDATE invoices "
+                        "SET total_pagado = 0 "
+                        "WHERE total_pagado IS NULL"
+                    )
+                )
+            if {"saldo_pendiente", "total_original", "total"}.issubset(columns):
+                connection.execute(
+                    text(
+                        "UPDATE invoices "
+                        "SET saldo_pendiente = COALESCE(total_original, total, 0) "
+                        "WHERE saldo_pendiente IS NULL AND COALESCE(tipo_comprobante, '') <> 'P'"
+                    )
+                )
 
 
 def _ensure_bank_transaction_columns() -> None:

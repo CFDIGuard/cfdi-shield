@@ -2,10 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.payment_complement import PaymentComplementProcessedData
+
 
 class InvoiceBase(BaseModel):
     uuid: str
     archivo: str | None = None
+    tipo_comprobante: str | None = None
     razon_social: str | None = None
     rfc_emisor: str | None = None
     rfc_receptor: str | None = None
@@ -31,6 +34,9 @@ class InvoiceBase(BaseModel):
     fuente_tipo_cambio: str | None = None
     fecha_tipo_cambio: str | None = None
     metodo_pago: str | None = None
+    total_pagado: float = 0
+    saldo_pendiente: float | None = None
+    estado_pago: str = "SIN_RELACION"
     estatus_sat: str = "ERROR"
     riesgo: str = "BAJO"
     score_proveedor: float = 0
@@ -40,6 +46,7 @@ class InvoiceBase(BaseModel):
 
 class InvoiceCreate(InvoiceBase):
     user_id: int
+    payment_complements: list[PaymentComplementProcessedData] = []
 
 
 class InvoiceResponse(InvoiceBase):
@@ -55,7 +62,7 @@ class InvoiceUploadResponse(BaseModel):
 
 
 class InvoiceProcessedData(InvoiceBase):
-    pass
+    payment_complements: list[PaymentComplementProcessedData] = []
 
 
 class InvoiceFilters(BaseModel):

@@ -334,8 +334,8 @@ def upload_xml_web(
         except ValueError as exc:
             db.rollback()
             invalidas += 1
-            logger.warning("Invalid XML upload during processing: %s", exc)
-            detail_lines.append(_format_upload_detail(filename, "parse_xml", str(exc)))
+            logger.warning("Business rule rejected XML upload: %s", exc)
+            detail_lines.append(_format_upload_detail(filename, "payment_relation", str(exc)))
         except IntegrityError as exc:
             db.rollback()
             duplicadas += 1

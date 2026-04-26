@@ -173,6 +173,44 @@ def _build_conciliacion_sheet(ws_conciliacion, reconciliation_rows: list[dict[st
         cell.number_format = MXN_FORMAT
 
 
+def _build_complementos_pago_sheet(ws_complementos_pago, reports: dict[str, object]) -> None:
+    headers = [
+        "UUID complemento",
+        "UUID factura relacionada",
+        "Fecha pago",
+        "Monto pago",
+        "Moneda pago",
+        "Parcialidad",
+        "Saldo anterior",
+        "Importe pagado",
+        "Saldo insoluto",
+        "Estado relacion",
+    ]
+    rows = [
+        [
+            row.get("uuid_complemento"),
+            row.get("uuid_factura_relacionada"),
+            row.get("fecha_pago"),
+            row.get("monto_pago"),
+            row.get("moneda_pago"),
+            row.get("parcialidad"),
+            row.get("saldo_anterior"),
+            row.get("importe_pagado"),
+            row.get("saldo_insoluto"),
+            row.get("estado_relacion"),
+        ]
+        for row in reports.get("complementos_pago", [])
+    ]
+    _write_rows(ws_complementos_pago, headers, rows)
+    for cell in (
+        ws_complementos_pago["D"][1:]
+        + ws_complementos_pago["G"][1:]
+        + ws_complementos_pago["H"][1:]
+        + ws_complementos_pago["I"][1:]
+    ):
+        cell.number_format = DECIMAL_FORMAT
+
+
 def generate_excel_report(
     reports_bundle: dict[str, object],
     report_mode: str = "full",
@@ -205,6 +243,10 @@ def generate_excel_report(
             ["Canceladas", summary["canceladas"]],
             ["Proveedores unicos", summary["proveedores_unicos"]],
             ["Sin validacion SAT", summary["sin_validacion_sat"]],
+            ["Facturas pagadas", summary.get("facturas_pagadas", 0)],
+            ["Facturas parciales", summary.get("facturas_parciales", 0)],
+            ["Facturas pendientes", summary.get("facturas_pendientes", 0)],
+            ["Complementos sin factura relacionada", summary.get("complementos_sin_factura_relacionada", 0)],
             ["Total IVA trasladado", summary["total_iva_trasladado"]],
             ["Total IVA retenido", summary["total_iva_retenido"]],
             ["Total ISR retenido", summary["total_isr_retenido"]],
@@ -339,6 +381,9 @@ def generate_excel_report(
 
         ws_resumen_riesgos = wb.create_sheet("RESUMEN_RIESGOS")
         _build_resumen_riesgos_sheet(ws_resumen_riesgos, reports)
+
+        ws_complementos_pago = wb.create_sheet("COMPLEMENTOS_PAGO")
+        _build_complementos_pago_sheet(ws_complementos_pago, reports)
 
         if reconciliation_rows is not None:
             ws_conciliacion = wb.create_sheet("CONCILIACION")

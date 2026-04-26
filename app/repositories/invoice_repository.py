@@ -6,8 +6,10 @@ from sqlalchemy import Numeric, String, cast, distinct, func, select
 from sqlalchemy.orm import Session
 
 from app.models.invoice import Invoice
+from app.models.payment_complement import PaymentComplement
 from app.models.sat_validation_cache import SatValidationCache
 from app.schemas.invoice import InvoiceCreate, InvoiceFilters
+from app.schemas.payment_complement import PaymentComplementCreate
 from app.services.reports_service import build_dashboard_summary, build_reports_bundle
 
 
@@ -59,12 +61,136 @@ class InvoiceRepository:
             statement = statement.where(func.coalesce(Invoice.fecha_emision, "") <= f"{cleaned['fecha_hasta']}T23:59:59")
         return statement
 
+    def _scope_payment_statement(self, statement):
+        if self.user_id is None:
+            return statement
+        return statement.where(PaymentComplement.user_id == self.user_id)
+
+    def _invoice_reference_total(self, invoice: Invoice) -> float:
+        if invoice.total_original:
+            return float(invoice.total_original or 0)
+        return float(invoice.total or 0)
+
+    def _persist_payment_complements(
+        self,
+        invoice: Invoice,
+        payment_complements: list[dict[str, object]],
+    ) -> None:
+        if not payment_complements:
+            return
+
+        missing_related: list[str] = []
+        normalized_rows: list[PaymentComplementCreate] = []
+        for row in payment_complements:
+            related_invoice_uuid = str(row.get("related_invoice_uuid") or "").strip().upper() or None
+            if not related_invoice_uuid:
+                missing_related.append("(sin UUID relacionado)")
+                continue
+            related_invoice = self.get_by_uuid(related_invoice_uuid)
+            if related_invoice is None:
+                missing_related.append(related_invoice_uuid)
+                continue
+            normalized_rows.append(
+                PaymentComplementCreate(
+                    user_id=invoice.user_id,
+                    payment_invoice_id=invoice.id,
+                    related_invoice_uuid=related_invoice_uuid,
+                    fecha_pago=row.get("fecha_pago"),
+                    moneda_pago=row.get("moneda_pago"),
+                    tipo_cambio_pago=row.get("tipo_cambio_pago"),
+                    monto_pago=row.get("monto_pago", 0) or 0,
+                    parcialidad=row.get("parcialidad"),
+                    saldo_anterior=row.get("saldo_anterior", 0) or 0,
+                    importe_pagado=row.get("importe_pagado", 0) or 0,
+                    saldo_insoluto=row.get("saldo_insoluto", 0) or 0,
+                )
+            )
+
+        if missing_related:
+            missing_joined = ", ".join(sorted(set(missing_related)))
+            raise ValueError(
+                "No se puede cargar el complemento de pago porque la factura relacionada no existe para este usuario: "
+                f"{missing_joined}"
+            )
+
+        for item in normalized_rows:
+            self.db.add(PaymentComplement(**item.model_dump()))
+
+    def _sync_invoice_payment_status(self, invoice: Invoice) -> None:
+        if str(invoice.tipo_comprobante or "").upper() == "P":
+            invoice.total_pagado = 0
+            invoice.saldo_pendiente = 0
+            invoice.estado_pago = "SIN_RELACION"
+            return
+
+        complements = self.list_payment_complements_for_invoice_uuid(invoice.uuid)
+        invoice_total = self._invoice_reference_total(invoice)
+        if not complements:
+            invoice.total_pagado = 0
+            invoice.saldo_pendiente = round(invoice_total, 2)
+            invoice.estado_pago = "PENDIENTE" if str(invoice.metodo_pago or "").upper() == "PPD" else "SIN_RELACION"
+            return
+
+        latest_complement = sorted(
+            complements,
+            key=lambda item: (item.fecha_pago or "", item.created_at),
+        )[-1]
+        total_pagado = round(sum(float(item.importe_pagado or 0) for item in complements), 2)
+        saldo_pendiente = round(float(latest_complement.saldo_insoluto or 0), 2)
+        if saldo_pendiente <= 0:
+            estado_pago = "PAGADA"
+        elif total_pagado > 0:
+            estado_pago = "PARCIAL"
+        else:
+            estado_pago = "PENDIENTE"
+
+        invoice.total_pagado = total_pagado
+        invoice.saldo_pendiente = max(saldo_pendiente, 0)
+        invoice.estado_pago = estado_pago
+
+    def list_payment_complements(self) -> list[PaymentComplement]:
+        statement = self._scope_payment_statement(select(PaymentComplement)).order_by(
+            PaymentComplement.created_at.desc()
+        )
+        return list(self.db.execute(statement).scalars().all())
+
+    def list_payment_complements_for_invoices(self, invoices: list[Invoice]) -> list[PaymentComplement]:
+        if not invoices:
+            return []
+        invoice_ids = [invoice.id for invoice in invoices]
+        invoice_uuids = [invoice.uuid for invoice in invoices if invoice.uuid]
+        statement = self._scope_payment_statement(select(PaymentComplement)).where(
+            (PaymentComplement.payment_invoice_id.in_(invoice_ids))
+            | (PaymentComplement.related_invoice_uuid.in_(invoice_uuids))
+        ).order_by(PaymentComplement.created_at.desc())
+        return list(self.db.execute(statement).scalars().all())
+
+    def list_payment_complements_for_invoice_uuid(self, related_invoice_uuid: str) -> list[PaymentComplement]:
+        statement = self._scope_payment_statement(select(PaymentComplement)).where(
+            PaymentComplement.related_invoice_uuid == related_invoice_uuid
+        )
+        return list(self.db.execute(statement).scalars().all())
+
     def create(self, invoice_data: InvoiceCreate) -> Invoice:
         payload = invoice_data.model_dump()
+        payment_complements = payload.pop("payment_complements", [])
         if self.user_id is not None:
             payload["user_id"] = self.user_id
         invoice = Invoice(**payload)
         self.db.add(invoice)
+        self.db.flush()
+        if str(invoice.tipo_comprobante or "").upper() == "P":
+            self._persist_payment_complements(invoice, payment_complements)
+            self._sync_invoice_payment_status(invoice)
+            for item in payment_complements:
+                related_invoice_uuid = str(item.get("related_invoice_uuid") or "").strip().upper()
+                if not related_invoice_uuid:
+                    continue
+                related_invoice = self.get_by_uuid(related_invoice_uuid)
+                if related_invoice is not None:
+                    self._sync_invoice_payment_status(related_invoice)
+        else:
+            self._sync_invoice_payment_status(invoice)
         self.db.commit()
         self.db.refresh(invoice)
         return invoice
@@ -164,14 +290,45 @@ class InvoiceRepository:
         return invoice
 
     def delete(self, invoice: Invoice) -> None:
+        if str(invoice.tipo_comprobante or "").upper() == "P":
+            related_uuids = [
+                related_uuid
+                for related_uuid in {
+                    item.related_invoice_uuid
+                    for item in self.list_payment_complements()
+                    if item.payment_invoice_id == invoice.id
+                }
+                if related_uuid
+            ]
+            statement = self._scope_payment_statement(select(PaymentComplement)).where(
+                PaymentComplement.payment_invoice_id == invoice.id
+            )
+            for item in self.db.execute(statement).scalars().all():
+                self.db.delete(item)
+            self.db.delete(invoice)
+            self.db.flush()
+            for related_uuid in related_uuids:
+                related_invoice = self.get_by_uuid(related_uuid)
+                if related_invoice is not None:
+                    self._sync_invoice_payment_status(related_invoice)
+            self.db.commit()
+            return
         self.db.delete(invoice)
         self.db.commit()
 
     def summary(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
-        return build_dashboard_summary(self.list_all(filters=filters))
+        invoices = self.list_all(filters=filters)
+        return build_dashboard_summary(
+            invoices,
+            self.list_payment_complements_for_invoices(invoices),
+        )
 
     def reports(self, filters: InvoiceFilters | None = None) -> dict[str, object]:
-        return build_reports_bundle(self.list_all(filters=filters))
+        invoices = self.list_all(filters=filters)
+        return build_reports_bundle(
+            invoices,
+            self.list_payment_complements_for_invoices(invoices),
+        )
 
     def unique_suppliers_count(self) -> int:
         statement = self._scope_invoice_statement(

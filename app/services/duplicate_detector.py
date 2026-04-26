@@ -11,4 +11,6 @@ def has_duplicate_uuid(repository: InvoiceRepository, uuid: str) -> bool:
 def has_same_rfc_total(repository: InvoiceRepository, invoice: InvoiceProcessedData) -> bool:
     if not invoice.rfc_emisor:
         return False
+    if str(getattr(invoice, "tipo_comprobante", "") or "").upper() == "P":
+        return False
     return repository.exists_same_rfc_total(invoice.rfc_emisor, invoice.total)

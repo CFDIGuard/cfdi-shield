@@ -775,6 +775,26 @@
                 <div class="kpi-value">{{ summary.riesgos_altos }}</div>
                 <div class="kpi-meta">Casos que merecen revision puntual.</div>
             </article>
+            <article class="kpi">
+                <div class="kpi-label">Facturas pagadas</div>
+                <div class="kpi-value">{{ summary.facturas_pagadas }}</div>
+                <div class="kpi-meta">Facturas con complemento de pago completamente aplicado.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Facturas parciales</div>
+                <div class="kpi-value">{{ summary.facturas_parciales }}</div>
+                <div class="kpi-meta">Facturas con pago parcial registrado.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Facturas pendientes</div>
+                <div class="kpi-value">{{ summary.facturas_pendientes }}</div>
+                <div class="kpi-meta">Facturas PPD aun sin liquidacion completa.</div>
+            </article>
+            <article class="kpi">
+                <div class="kpi-label">Complementos sin relacion</div>
+                <div class="kpi-value">{{ summary.complementos_sin_factura_relacionada }}</div>
+                <div class="kpi-meta">Debe permanecer en cero para evitar cruces incompletos.</div>
+            </article>
         </section>
 
         <section class="layout">
