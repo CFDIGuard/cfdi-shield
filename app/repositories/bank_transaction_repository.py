@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+"""Bank Shield v0.1 internal module component.
+
+Current implementation remains in legacy shared app structure until modular
+migration is safe.
+"""
+
 from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.orm import Session
 

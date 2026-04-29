@@ -1,5 +1,11 @@
 from datetime import datetime, timezone
 
+"""Bank Shield v0.1 internal module component.
+
+Current implementation remains in legacy shared app structure until modular
+migration is safe.
+"""
+
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
