@@ -44,6 +44,21 @@ def _database_log_details() -> tuple[str, str]:
     return engine, f"{host}/{database}"
 
 
+def _content_security_policy() -> str:
+    return (
+        "default-src 'self'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'; "
+        "object-src 'none'; "
+        "form-action 'self'; "
+        "img-src 'self' data:; "
+        "font-src 'self' data:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "connect-src 'self'"
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
@@ -57,7 +72,7 @@ def create_app() -> FastAPI:
         secret_key=APP_SECRET_KEY,
         session_cookie="cfdi_shield_web_session",
         same_site="lax",
-        https_only=settings.base_url.startswith("https://"),
+        https_only=settings.use_secure_cookies,
         max_age=settings.session_max_age_seconds,
     )
     app.mount("/static", StaticFiles(directory=str(resource_path("static"))), name="static")
@@ -81,6 +96,24 @@ def create_app() -> FastAPI:
         if settings.sqlite_database_path is not None:
             logger.info("SQLite database path=%s", settings.sqlite_database_path)
         log_smtp_configuration()
+
+    @app.middleware("http")
+    async def security_headers(request: Request, call_next):
+        response = await call_next(request)
+        if settings.security_headers_enabled:
+            response.headers.setdefault("X-Frame-Options", "DENY")
+            response.headers.setdefault("X-Content-Type-Options", "nosniff")
+            response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+            response.headers.setdefault("Content-Security-Policy", _content_security_policy())
+            if settings.use_secure_cookies:
+                hsts_value = "max-age=31536000; includeSubDomains"
+                if settings.app_env.strip().lower() == "production":
+                    hsts_value += "; preload"
+                response.headers.setdefault(
+                    "Strict-Transport-Security",
+                    hsts_value,
+                )
+        return response
 
     @app.middleware("http")
     async def log_requests(request: Request, call_next):

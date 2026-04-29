@@ -17,7 +17,6 @@ from app.services.auth_service import (
     create_password_reset_expiration,
     create_password_reset_token,
     create_pending_two_factor_token,
-    create_session_token,
     create_two_factor_code,
     create_two_factor_expiration,
     hash_password,
@@ -31,12 +30,24 @@ from app.services.notification_service import (
     smtp_ready_for_delivery,
 )
 from app.templates import templates
+from app.services.session_service import create_user_session, revoke_session
 from app.web.utils import web_url
 from app.web_deps import get_current_user, get_pending_two_factor_user
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"], dependencies=[Depends(require_csrf)])
+
+
+def _security_event(event: str, *, username: str | None = None, ip: str | None = None, result: str = "ok") -> None:
+    logger.info(
+        "security_event=%s result=%s user=%s org=%s ip=%s",
+        event,
+        result,
+        mask_username(username) if username else "-",
+        "-",
+        ip or "-",
+    )
 
 
 def _enable_registration() -> bool:
@@ -64,13 +75,15 @@ def _two_factor_can_be_enabled() -> bool:
     return _two_factor_available() and smtp_ready_for_delivery()
 
 
-def _set_session_cookie(response: RedirectResponse, user_id: int) -> None:
+def _set_session_cookie(response: RedirectResponse, raw_token: str) -> None:
     response.set_cookie(
         key=settings.session_cookie_name,
-        value=create_session_token(user_id),
-        max_age=settings.session_max_age_seconds,
+        value=raw_token,
+        max_age=settings.auth_session_max_age_seconds,
         httponly=True,
         samesite="lax",
+        secure=settings.use_secure_cookies,
+        path="/",
     )
 
 
@@ -81,12 +94,26 @@ def _set_pending_two_factor_cookie(response: RedirectResponse, user_id: int) -> 
         max_age=settings.pending_two_factor_max_age_seconds,
         httponly=True,
         samesite="lax",
+        secure=settings.use_secure_cookies,
+        path="/",
     )
 
 
 def _clear_auth_cookies(response: RedirectResponse) -> None:
-    response.delete_cookie(settings.session_cookie_name)
-    response.delete_cookie(settings.pending_two_factor_cookie_name)
+    response.delete_cookie(
+        settings.session_cookie_name,
+        path="/",
+        secure=settings.use_secure_cookies,
+        httponly=True,
+        samesite="lax",
+    )
+    response.delete_cookie(
+        settings.pending_two_factor_cookie_name,
+        path="/",
+        secure=settings.use_secure_cookies,
+        httponly=True,
+        samesite="lax",
+    )
 
 
 def _registration_error_for(username: str, access_code: str | None) -> str | None:
@@ -110,6 +137,10 @@ def _client_ip(request: Request) -> str:
     if forwarded_for:
         return forwarded_for.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+def _current_session_token(request: Request) -> str | None:
+    return request.cookies.get(settings.session_cookie_name)
 
 
 @router.get("/login", response_class=HTMLResponse, response_model=None)
@@ -147,6 +178,7 @@ def login(
     client_ip = _client_ip(request)
     if is_rate_limited("login", client_ip, normalized_username):
         logger.warning("Rate limit reached for login username=%s ip=%s", mask_username(normalized_username), client_ip)
+        _security_event("login_rate_limited", username=normalized_username, ip=client_ip, result="blocked")
         return RedirectResponse(
             url=web_url("/login", error="Demasiados intentos. Espera unos minutos e intenta de nuevo."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -158,6 +190,7 @@ def login(
     if user is None or not verify_password(password, user.password_hash) or not user.is_active:
         record_rate_limit_failure("login", client_ip, normalized_username)
         logger.warning("Failed login attempt for username=%s ip=%s", mask_username(normalized_username), client_ip)
+        _security_event("login", username=normalized_username, ip=client_ip, result="failed")
         return RedirectResponse(
             url=web_url("/login", error="Usuario o contrasena incorrectos."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -202,16 +235,22 @@ def login(
         )
         _clear_auth_cookies(response)
         _set_pending_two_factor_cookie(response, user.id)
-        logger.info("2FA challenge started for %s", mask_username(user.username))
+        _security_event("login_two_factor_challenge", username=user.username, ip=client_ip, result="pending_2fa")
         return response
 
     response = RedirectResponse(
         url=web_url("/dashboard-web", message="Sesion iniciada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
+    raw_session_token = create_user_session(
+        db,
+        user.id,
+        ip=client_ip,
+        user_agent=request.headers.get("user-agent"),
+    )
     _clear_auth_cookies(response)
-    _set_session_cookie(response, user.id)
-    logger.info("User logged in: %s", mask_username(user.username))
+    _set_session_cookie(response, raw_session_token)
+    _security_event("login", username=user.username, ip=client_ip, result="success")
     return response
 
 
@@ -241,6 +280,7 @@ def verify_two_factor_page(
 
 @router.post("/verify-2fa", response_model=None)
 def verify_two_factor(
+    request: Request,
     code: str = Form(...),
     db: Session = Depends(get_db),
     pending_user: User | None = Depends(get_pending_two_factor_user),
@@ -270,9 +310,15 @@ def verify_two_factor(
         url=web_url("/dashboard-web", message="Sesion iniciada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
+    raw_session_token = create_user_session(
+        db,
+        user.id,
+        ip=_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
     _clear_auth_cookies(response)
-    _set_session_cookie(response, user.id)
-    logger.info("2FA verification completed for %s", mask_username(user.username))
+    _set_session_cookie(response, raw_session_token)
+    _security_event("two_factor_verify", username=user.username, result="success")
     return response
 
 
@@ -313,6 +359,7 @@ def forgot_password(
         if not delivered:
             repository.clear_password_reset(user)
             logger.warning("Password reset delivery unavailable for username=%s", mask_username(user.username))
+            _security_event("password_reset_email", username=user.username, result="delivery_failed")
 
     return RedirectResponse(
         url=web_url(
@@ -379,7 +426,7 @@ def reset_password(
         )
 
     repository.update_password(user, hash_password(password))
-    logger.info("Password reset completed for %s", mask_username(user.username))
+    _security_event("password_reset", username=user.username, result="success")
     return RedirectResponse(
         url=web_url("/login", message="Contrasena actualizada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
@@ -426,6 +473,7 @@ def register(
     client_ip = _client_ip(request)
     if is_rate_limited("register", client_ip, normalized_username):
         logger.warning("Rate limit reached for register username=%s ip=%s", mask_username(normalized_username), client_ip)
+        _security_event("register_rate_limited", username=normalized_username, ip=client_ip, result="blocked")
         return RedirectResponse(
             url=web_url("/register", error="Demasiados intentos. Espera unos minutos e intenta de nuevo."),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -480,9 +528,15 @@ def register(
         url=web_url("/dashboard-web", message="Cuenta creada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
+    raw_session_token = create_user_session(
+        db,
+        user.id,
+        ip=client_ip,
+        user_agent=request.headers.get("user-agent"),
+    )
     _clear_auth_cookies(response)
-    _set_session_cookie(response, user.id)
-    logger.info("User registered: %s", mask_username(user.username))
+    _set_session_cookie(response, raw_session_token)
+    _security_event("register", username=user.username, ip=client_ip, result="success")
     return response
 
 @router.post("/two-factor/toggle", response_model=None)
@@ -519,10 +573,12 @@ def toggle_two_factor(
 
 
 @router.post("/logout", response_model=None)
-def logout():
+def logout(request: Request, db: Session = Depends(get_db)):
     response = RedirectResponse(
         url=web_url("/login", message="Sesion cerrada correctamente."),
         status_code=status.HTTP_303_SEE_OTHER,
     )
+    revoke_session(db, _current_session_token(request), reason="logout")
     _clear_auth_cookies(response)
+    _security_event("logout", result="success")
     return response

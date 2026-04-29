@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
-import xml.etree.ElementTree as ET
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+
+from defusedxml import ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 from app.schemas.invoice import InvoiceProcessedData
 from app.schemas.payment_complement import PaymentComplementProcessedData
@@ -235,7 +237,7 @@ def _extract_payment_complements(root: ET.Element) -> list[PaymentComplementProc
 def parse_cfdi_xml(file_bytes: bytes, filename: str | None = None) -> InvoiceProcessedData:
     try:
         root = ET.fromstring(file_bytes)
-    except ET.ParseError as exc:
+    except (ET.ParseError, DefusedXmlException) as exc:
         raise ValueError("El archivo XML no es valido.") from exc
 
     emisor = _find_first(root, ["cfdi:Emisor", "cfdi3:Emisor"])

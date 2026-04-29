@@ -32,6 +32,7 @@ def _resolve_sqlite_path(value: str) -> Path | None:
 class Settings(BaseSettings):
     app_name: str = Field(default="CFDI Shield", alias="APP_NAME")
     app_version: str = Field(default="1.0", alias="APP_VERSION")
+    app_env: str = Field(default="development", alias="APP_ENV")
     debug: bool = Field(default=False, alias="DEBUG")
     api_v1_prefix: str = "/api/v1"
     database_url: str = Field(default="sqlite:///./facturas.db", alias="DATABASE_URL")
@@ -62,8 +63,15 @@ class Settings(BaseSettings):
         alias="BANK_RECONCILIATION_DATE_WINDOW_DAYS",
     )
     session_secret_key: str = Field(default="", alias="APP_SECRET_KEY")
+    cookie_secure: bool | None = Field(default=None, alias="COOKIE_SECURE")
     session_cookie_name: str = "facturas_session"
     session_max_age_seconds: int = 604800
+    session_max_age_hours: int = Field(default=24, alias="SESSION_MAX_AGE_HOURS")
+    session_idle_timeout_minutes: int = Field(default=60, alias="SESSION_IDLE_TIMEOUT_MINUTES")
+    session_update_last_seen_interval_seconds: int = Field(
+        default=300,
+        alias="SESSION_UPDATE_LAST_SEEN_INTERVAL_SECONDS",
+    )
     pending_two_factor_cookie_name: str = "facturas_pending_2fa"
     pending_two_factor_max_age_seconds: int = 900
     password_reset_token_ttl_minutes: int = 30
@@ -108,6 +116,20 @@ class Settings(BaseSettings):
     @property
     def sqlite_database_path(self) -> Path | None:
         return _resolve_sqlite_path(self.database_url)
+
+    @property
+    def use_secure_cookies(self) -> bool:
+        if self.cookie_secure is not None:
+            return self.cookie_secure
+        return self.base_url.startswith("https://")
+
+    @property
+    def auth_session_max_age_seconds(self) -> int:
+        return max(int(self.session_max_age_hours), 1) * 3600
+
+    @property
+    def security_headers_enabled(self) -> bool:
+        return True
 
 
 settings = Settings()
