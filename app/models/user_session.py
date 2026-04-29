@@ -17,7 +17,6 @@ class UserSession(Base):
     __tablename__ = "user_sessions"
     __table_args__ = (
         Index("ix_user_sessions_token_hash_unique", "token_hash", unique=True),
-        Index("ix_user_sessions_user_id", "user_id"),
     )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True, default=lambda: uuid4().hex)

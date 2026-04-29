@@ -25,6 +25,7 @@ def _make_db(tmp_path):
     db_path = tmp_path / "session_service.db"
     engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
     session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     return engine, session_local
 

@@ -45,6 +45,8 @@ def _database_log_details() -> tuple[str, str]:
 
 
 def _content_security_policy() -> str:
+    # TODO(v1.2): retirar 'unsafe-inline' moviendo CSS/JS inline a archivos estaticos
+    # o usando nonces/hashes. Se mantiene por compatibilidad con plantillas actuales.
     return (
         "default-src 'self'; "
         "base-uri 'self'; "
@@ -73,7 +75,7 @@ def create_app() -> FastAPI:
         session_cookie="cfdi_shield_web_session",
         same_site="lax",
         https_only=settings.use_secure_cookies,
-        max_age=settings.session_max_age_seconds,
+        max_age=settings.auth_session_max_age_seconds,
     )
     app.mount("/static", StaticFiles(directory=str(resource_path("static"))), name="static")
     app.include_router(api_router, prefix=settings.api_v1_prefix)

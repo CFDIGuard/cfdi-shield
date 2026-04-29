@@ -6,7 +6,7 @@ import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.csrf import APP_SECRET_KEY
@@ -185,42 +185,31 @@ def revoke_session(db: Session, raw_token: str | None, reason: str = "logout") -
 
 
 def revoke_all_user_sessions(db: Session, user_id: int, reason: str = "global_logout") -> int:
-    sessions = list(
-        db.execute(
-            select(UserSession).where(
-                UserSession.user_id == user_id,
-                UserSession.revoked_at.is_(None),
-            )
-        ).scalars().all()
-    )
-    if not sessions:
-        return 0
-
     now = _utc_now()
-    for session in sessions:
-        session.revoked_at = now
-        session.revoked_reason = reason
-        db.add(session)
+    result = db.execute(
+        update(UserSession)
+        .where(
+            UserSession.user_id == user_id,
+            UserSession.revoked_at.is_(None),
+        )
+        .values(revoked_at=now, revoked_reason=reason)
+    )
     db.commit()
-    _log_security_event("global_logout", user_id=user_id, result="success", reason=reason)
-    return len(sessions)
+    affected = int(result.rowcount or 0)
+    if affected > 0:
+        _log_security_event("global_logout", user_id=user_id, result="success", reason=reason)
+    return affected
 
 
 def cleanup_expired_sessions(db: Session) -> int:
     now = _utc_now()
-    sessions = list(
-        db.execute(
-            select(UserSession).where(
-                UserSession.revoked_at.is_(None),
-                UserSession.expires_at <= now,
-            )
-        ).scalars().all()
+    result = db.execute(
+        update(UserSession)
+        .where(
+            UserSession.revoked_at.is_(None),
+            UserSession.expires_at <= now,
+        )
+        .values(revoked_at=now, revoked_reason="expired")
     )
-    if not sessions:
-        return 0
-    for session in sessions:
-        session.revoked_at = now
-        session.revoked_reason = "expired"
-        db.add(session)
     db.commit()
-    return len(sessions)
+    return int(result.rowcount or 0)

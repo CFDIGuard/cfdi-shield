@@ -65,7 +65,6 @@ class Settings(BaseSettings):
     session_secret_key: str = Field(default="", alias="APP_SECRET_KEY")
     cookie_secure: bool | None = Field(default=None, alias="COOKIE_SECURE")
     session_cookie_name: str = "facturas_session"
-    session_max_age_seconds: int = 604800
     session_max_age_hours: int = Field(default=24, alias="SESSION_MAX_AGE_HOURS")
     session_idle_timeout_minutes: int = Field(default=60, alias="SESSION_IDLE_TIMEOUT_MINUTES")
     session_update_last_seen_interval_seconds: int = Field(
@@ -126,6 +125,11 @@ class Settings(BaseSettings):
     @property
     def auth_session_max_age_seconds(self) -> int:
         return max(int(self.session_max_age_hours), 1) * 3600
+
+    @property
+    def session_max_age_seconds(self) -> int:
+        # Deprecated compatibility alias. Use SESSION_MAX_AGE_HOURS / auth_session_max_age_seconds.
+        return self.auth_session_max_age_seconds
 
     @property
     def security_headers_enabled(self) -> bool:

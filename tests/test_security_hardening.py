@@ -50,6 +50,7 @@ def test_login_cookie_flags_hardened(tmp_path, monkeypatch):
     monkeypatch.setattr(web_deps_module, "SessionLocal", testing_session_local)
     monkeypatch.setattr(settings, "cookie_secure", True)
 
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     init_db_module.ensure_db_initialized()
 
@@ -90,6 +91,7 @@ def test_logout_revokes_server_side_session(tmp_path, monkeypatch):
     monkeypatch.setattr(web_deps_module, "SessionLocal", testing_session_local)
     monkeypatch.setattr(settings, "cookie_secure", False)
 
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     init_db_module.ensure_db_initialized()
 
