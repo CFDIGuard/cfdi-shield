@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from io import BytesIO
+import re
+from urllib.parse import unquote_plus
 
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
@@ -18,8 +20,21 @@ from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.invoice import InvoiceCreate
 from app.schemas.payment_complement import PaymentComplementProcessedData
-from app.services.auth_service import create_session_token, hash_password
+from app.services.auth_service import hash_password
+from app.services.session_service import create_user_session
 import app.web_deps as web_deps_module
+
+
+def _csrf_session_for(client: TestClient, auth_cookies: dict[str, str], path: str = "/dashboard-web") -> tuple[str, dict[str, str]]:
+    response = client.get(path, cookies=auth_cookies)
+    assert response.status_code == 200
+    match = re.search(r'name="csrf_token"\s+value="([^"]+)"', response.text)
+    assert match is not None
+    session_cookie = response.cookies.get("cfdi_shield_web_session") or client.cookies.get("cfdi_shield_web_session")
+    assert session_cookie is not None
+    merged = dict(auth_cookies)
+    merged["cfdi_shield_web_session"] = session_cookie
+    return match.group(1), merged
 
 
 def _make_invoice(user_id: int, uuid: str, total: float, razon_social: str) -> InvoiceCreate:
@@ -66,6 +81,7 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     monkeypatch.setattr(init_db_module, "_initialized", False)
     monkeypatch.setattr(web_deps_module, "SessionLocal", testing_session_local)
 
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     init_db_module.ensure_db_initialized()
 
@@ -73,30 +89,37 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         user_repo = UserRepository(db)
         user_a = user_repo.create("a@example.com", hash_password("password123"))
         user_b = user_repo.create("b@example.com", hash_password("password123"))
+        user_a_id = user_a.id
+        user_b_id = user_b.id
 
-        repo_a = InvoiceRepository(db, user_id=user_a.id)
-        repo_b = InvoiceRepository(db, user_id=user_b.id)
-        invoice_a_payload = _make_invoice(user_a.id, "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA", 100.0, "Proveedor A")
+        repo_a = InvoiceRepository(db, user_id=user_a_id)
+        repo_b = InvoiceRepository(db, user_id=user_b_id)
+        invoice_a_payload = _make_invoice(user_a_id, "AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA", 100.0, "Proveedor A")
         invoice_a_payload.estatus_sat = "CANCELADO"
         invoice_a_payload.riesgo = "ALTO"
         invoice_a_payload.detalle_riesgo = "CFDI cancelado"
         invoice_a = repo_a.create(invoice_a_payload)
+        invoice_a_id = invoice_a.id
+        invoice_a_uuid = invoice_a.uuid
 
-        invoice_a2_payload = _make_invoice(user_a.id, "AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA", 150.0, "Proveedor A2")
+        invoice_a2_payload = _make_invoice(user_a_id, "AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA", 150.0, "Proveedor A2")
         invoice_a2_payload.rfc_emisor = "CCC010101CCC"
         invoice_a2_payload.estatus_sat = "VIGENTE"
         invoice_a2_payload.riesgo = "BAJO"
         invoice_a2_payload.detalle_riesgo = ""
         invoice_a2 = repo_a.create(invoice_a2_payload)
+        invoice_a2_id = invoice_a2.id
 
-        invoice_partial_payload = _make_invoice(user_a.id, "AAAAAAAA-5555-4555-8555-AAAAAAAAAAAA", 7500.0, "Proveedor Parcial")
+        invoice_partial_payload = _make_invoice(user_a_id, "AAAAAAAA-5555-4555-8555-AAAAAAAAAAAA", 7500.0, "Proveedor Parcial")
         invoice_partial_payload.rfc_emisor = "DDD010101DDD"
         invoice_partial_payload.estatus_sat = "VIGENTE"
         invoice_partial_payload.riesgo = "MEDIO"
         invoice_partial_payload.detalle_riesgo = "Pago parcial detectado"
         invoice_partial = repo_a.create(invoice_partial_payload)
+        invoice_partial_id = invoice_partial.id
+        invoice_partial_uuid = invoice_partial.uuid
 
-        payment_a_payload = _make_invoice(user_a.id, "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA", 0.0, "Proveedor A")
+        payment_a_payload = _make_invoice(user_a_id, "AAAAAAAA-4444-4444-8444-AAAAAAAAAAAA", 0.0, "Proveedor A")
         payment_a_payload.tipo_comprobante = "P"
         payment_a_payload.moneda = "XXX"
         payment_a_payload.moneda_original = "XXX"
@@ -114,13 +137,13 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
             )
         ]
         repo_a.create(payment_a_payload)
-        refreshed_invoice_a = repo_a.get_by_id(invoice_a.id)
+        refreshed_invoice_a = repo_a.get_by_id(invoice_a_id)
         assert refreshed_invoice_a is not None
         assert refreshed_invoice_a.estado_pago == "PAGADA"
         assert float(refreshed_invoice_a.total_pagado or 0) == 100.0
         assert float(refreshed_invoice_a.saldo_pendiente or 0) == 0.0
 
-        payment_partial_payload = _make_invoice(user_a.id, "AAAAAAAA-6666-4666-8666-AAAAAAAAAAAA", 0.0, "Proveedor Parcial")
+        payment_partial_payload = _make_invoice(user_a_id, "AAAAAAAA-6666-4666-8666-AAAAAAAAAAAA", 0.0, "Proveedor Parcial")
         payment_partial_payload.tipo_comprobante = "P"
         payment_partial_payload.moneda = "XXX"
         payment_partial_payload.moneda_original = "XXX"
@@ -138,28 +161,31 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
             )
         ]
         repo_a.create(payment_partial_payload)
-        refreshed_invoice_partial = repo_a.get_by_id(invoice_partial.id)
+        refreshed_invoice_partial = repo_a.get_by_id(invoice_partial_id)
         assert refreshed_invoice_partial is not None
         assert refreshed_invoice_partial.estado_pago == "PARCIAL"
         assert float(refreshed_invoice_partial.total_pagado or 0) == 3000.0
         assert float(refreshed_invoice_partial.saldo_pendiente or 0) == 4500.0
 
-        refreshed_invoice_a2 = repo_a.get_by_id(invoice_a2.id)
+        refreshed_invoice_a2 = repo_a.get_by_id(invoice_a2_id)
         assert refreshed_invoice_a2 is not None
         assert refreshed_invoice_a2.estado_pago == "PENDIENTE"
         assert float(refreshed_invoice_a2.total_pagado or 0) == 0.0
         assert float(refreshed_invoice_a2.saldo_pendiente or 0) == 150.0
 
-        invoice_b_payload = _make_invoice(user_b.id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
+        invoice_b_payload = _make_invoice(user_b_id, "BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB", 200.0, "Proveedor B")
+        invoice_b_payload.rfc_emisor = "BBB010101BBB"
         invoice_b_payload.estatus_sat = "SIN_VALIDACION"
         invoice_b_payload.riesgo = "MEDIO"
         invoice_b_payload.detalle_riesgo = "CFDI sin validacion SAT"
         invoice_b = repo_b.create(invoice_b_payload)
+        invoice_b_id = invoice_b.id
 
     client = TestClient(app)
     cookie_name = settings.session_cookie_name
-    cookie_a = {cookie_name: create_session_token(user_a.id)}
-    cookie_b = {cookie_name: create_session_token(user_b.id)}
+    with testing_session_local() as db:
+        cookie_a = {cookie_name: create_user_session(db, user_a_id, ip="127.0.0.1", user_agent="pytest")}
+        cookie_b = {cookie_name: create_user_session(db, user_b_id, ip="127.0.0.1", user_agent="pytest")}
 
     response_a = client.get("/api/v1/dashboard/export-excel", cookies=cookie_a)
     assert response_a.status_code == 200
@@ -200,23 +226,25 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "PENDIENTE" in dashboard_a.text
 
     with testing_session_local() as db:
-        repair_repo = InvoiceRepository(db, user_id=user_a.id)
-        damaged_invoice = repair_repo.get_by_id(invoice_a.id)
+        repair_repo = InvoiceRepository(db, user_id=user_a_id)
+        damaged_invoice = repair_repo.get_by_id(invoice_a_id)
         assert damaged_invoice is not None
         damaged_invoice.total_pagado = 0
         damaged_invoice.saldo_pendiente = 100
         damaged_invoice.estado_pago = "PENDIENTE"
         db.commit()
 
+    dashboard_csrf, dashboard_cookies_a = _csrf_session_for(client, cookie_a)
     recalc_a = client.post(
-        f"/invoices/{invoice_a.id}/recalculate-payment-status",
-        cookies=cookie_a,
+        f"/invoices/{invoice_a_id}/recalculate-payment-status",
+        cookies=dashboard_cookies_a,
+        data={"csrf_token": dashboard_csrf},
         follow_redirects=False,
     )
     assert recalc_a.status_code == 303
 
     with testing_session_local() as db:
-        repaired_invoice = InvoiceRepository(db, user_id=user_a.id).get_by_id(invoice_a.id)
+        repaired_invoice = InvoiceRepository(db, user_id=user_a_id).get_by_id(invoice_a_id)
         assert repaired_invoice is not None
         assert repaired_invoice.estado_pago == "PAGADA"
         assert float(repaired_invoice.total_pagado or 0) == 100.0
@@ -322,9 +350,11 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         "2026-04-25,Pago Proveedor A2,,151.00\n"
         "2026-04-25,Movimiento sin match,,999.00\n"
     ).encode("utf-8")
+    reconciliation_csrf, reconciliation_cookies_a = _csrf_session_for(client, cookie_a, path="/reconciliation")
     upload_reconciliation_a = client.post(
         "/reconciliation/upload",
-        cookies=cookie_a,
+        cookies=reconciliation_cookies_a,
+        data={"csrf_token": reconciliation_csrf},
         files={"file": ("estado.csv", bank_csv, "text/csv")},
         follow_redirects=False,
     )
@@ -345,7 +375,7 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Movimiento sin match" not in reconciliation_page_b.text
 
     with testing_session_local() as db:
-        bank_repo_a = BankTransactionRepository(db, user_id=user_a.id)
+        bank_repo_a = BankTransactionRepository(db, user_id=user_a_id)
         txs_a = bank_repo_a.list_all()
         assert len(txs_a) == 3
         posible_tx = next(tx for tx in txs_a if abs(tx.monto - 151.0) < 0.01)
@@ -354,28 +384,38 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
         assert posible_tx.match_status == "POSIBLE"
         assert conciliado_tx.match_status == "CONCILIADO"
 
-    confirm_posible = client.post(f"/reconciliation/confirm/{posible_tx.id}", cookies=cookie_a)
+    confirm_posible = client.post(
+        f"/reconciliation/confirm/{posible_tx.id}",
+        cookies=reconciliation_cookies_a,
+        data={"csrf_token": reconciliation_csrf},
+    )
     assert confirm_posible.status_code == 200
     assert confirm_posible.json()["transaction"]["match_status"] == "CONCILIADO"
     assert confirm_posible.json()["transaction"]["origen"] == "MANUAL"
 
     assign_pending = client.post(
-        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_a.id}",
-        cookies=cookie_a,
+        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_a_id}",
+        cookies=reconciliation_cookies_a,
+        data={"csrf_token": reconciliation_csrf},
     )
     assert assign_pending.status_code == 200
     assert assign_pending.json()["transaction"]["match_status"] == "CONCILIADO"
-    assert assign_pending.json()["transaction"]["matched_invoice_uuid"] == invoice_a.uuid
+    assert assign_pending.json()["transaction"]["matched_invoice_uuid"] == invoice_a_uuid
     assert assign_pending.json()["transaction"]["origen"] == "MANUAL"
 
-    reject_tx = client.post(f"/reconciliation/reject/{conciliado_tx.id}", cookies=cookie_a)
+    reject_tx = client.post(
+        f"/reconciliation/reject/{conciliado_tx.id}",
+        cookies=reconciliation_cookies_a,
+        data={"csrf_token": reconciliation_csrf},
+    )
     assert reject_tx.status_code == 200
     assert reject_tx.json()["transaction"]["match_status"] == "PENDIENTE"
     assert reject_tx.json()["transaction"]["matched_invoice_uuid"] is None
 
     assign_foreign_invoice = client.post(
-        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_b.id}",
-        cookies=cookie_a,
+        f"/reconciliation/assign/{pendiente_tx.id}?invoice_id={invoice_b_id}",
+        cookies=reconciliation_cookies_a,
+        data={"csrf_token": reconciliation_csrf},
     )
     assert assign_foreign_invoice.status_code == 404
 
@@ -453,35 +493,40 @@ def test_multiuser_excel_delete_and_get_isolation(tmp_path, monkeypatch):
     assert "Pago Proveedor A2" in filtered_reconciliation_values
     assert "Movimiento sin match" not in filtered_reconciliation_values
 
-    get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b.id}", cookies=cookie_a)
+    get_b_as_a = client.get(f"/api/v1/invoices/{invoice_b_id}", cookies=cookie_a)
     assert get_b_as_a.status_code == 404
 
+    delete_csrf, delete_cookies_a = _csrf_session_for(client, cookie_a)
     delete_b_as_a = client.post(
-        f"/invoices/{invoice_b.id}/delete",
-        cookies=cookie_a,
+        f"/invoices/{invoice_b_id}/delete",
+        cookies=delete_cookies_a,
+        data={"csrf_token": delete_csrf},
         follow_redirects=False,
     )
     assert delete_b_as_a.status_code == 303
 
     delete_a2 = client.post(
-        f"/invoices/{invoice_a2.id}/delete",
-        cookies=cookie_a,
+        f"/invoices/{invoice_a2_id}/delete",
+        cookies=delete_cookies_a,
+        data={"csrf_token": delete_csrf},
         follow_redirects=False,
     )
     assert delete_a2.status_code == 303
 
     delete_a_with_complement = client.post(
-        f"/invoices/{invoice_a.id}/delete",
-        cookies=cookie_a,
+        f"/invoices/{invoice_a_id}/delete",
+        cookies=delete_cookies_a,
+        data={"csrf_token": delete_csrf},
         follow_redirects=False,
     )
     assert delete_a_with_complement.status_code == 303
-    assert "No%20puedes%20eliminar%20esta%20factura" in delete_a_with_complement.headers["location"]
+    decoded_location = unquote_plus(delete_a_with_complement.headers["location"])
+    assert "No puedes eliminar esta factura" in decoded_location
 
     with testing_session_local() as db:
-        remaining_b = InvoiceRepository(db, user_id=user_b.id).get_by_id(invoice_b.id)
+        remaining_b = InvoiceRepository(db, user_id=user_b_id).get_by_id(invoice_b_id)
         assert remaining_b is not None
-        deleted_a2 = InvoiceRepository(db, user_id=user_a.id).get_by_uuid("AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA")
+        deleted_a2 = InvoiceRepository(db, user_id=user_a_id).get_by_uuid("AAAAAAAA-3333-4333-8333-AAAAAAAAAAAA")
         assert deleted_a2 is None
-        protected_a = InvoiceRepository(db, user_id=user_a.id).get_by_id(invoice_a.id)
+        protected_a = InvoiceRepository(db, user_id=user_a_id).get_by_id(invoice_a_id)
         assert protected_a is not None

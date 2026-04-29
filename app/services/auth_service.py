@@ -39,6 +39,7 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_session_token(user_id: int) -> str:
+    # Deprecated: replaced by server-side opaque sessions in session_service.py.
     payload = str(user_id)
     signature = hmac.new(
         _get_secret_key().encode("utf-8"),
@@ -59,6 +60,7 @@ def create_pending_two_factor_token(user_id: int) -> str:
 
 
 def verify_session_token(token: str | None) -> int | None:
+    # Deprecated: replaced by server-side opaque sessions in session_service.py.
     if not token or ":" not in token:
         return None
 

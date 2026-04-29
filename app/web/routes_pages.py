@@ -37,6 +37,25 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["web"], dependencies=[Depends(require_csrf)])
 
 
+def _security_event(
+    event: str,
+    *,
+    current_user: User | None = None,
+    filename: str | None = None,
+    result: str = "ok",
+    detail: str | None = None,
+) -> None:
+    logger.info(
+        "security_event=%s result=%s user=%s org=%s file=%s detail=%s",
+        event,
+        result,
+        mask_username(current_user.username) if current_user is not None else "-",
+        "-",
+        filename or "-",
+        detail or "-",
+    )
+
+
 def _build_invoice_filters(
     rfc_receptor: str | None = None,
     rfc_emisor: str | None = None,
@@ -277,6 +296,13 @@ def upload_xml_web(
         if not filename.lower().endswith(".xml"):
             invalidas += 1
             logger.warning("Rejected non-XML upload: %s", filename or "sin_nombre")
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="rejected_extension",
+                detail="extension_no_permitida",
+            )
             detail_lines.append(
                 _format_upload_detail(filename, "parse_xml", "Extension no permitida")
             )
@@ -286,6 +312,13 @@ def upload_xml_web(
         if len(content) > settings.max_upload_size_bytes:
             invalidas += 1
             logger.warning("Rejected oversized XML upload: %s", filename)
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="rejected_size",
+                detail="tamano_excedido",
+            )
             detail_lines.append(
                 _format_upload_detail(
                     filename,
@@ -300,11 +333,25 @@ def upload_xml_web(
         except ValueError as exc:
             invalidas += 1
             logger.warning("Invalid XML upload: %s", exc)
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="parse_failed",
+                detail="xml_invalido",
+            )
             detail_lines.append(_format_upload_detail(filename, "parse_xml", str(exc)))
             continue
 
         if parsed_invoice.uuid in batch_uuids:
             duplicadas += 1
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="duplicate",
+                detail="uuid_duplicado_en_lote",
+            )
             detail_lines.append(
                 _format_upload_detail(
                     filename,
@@ -317,6 +364,13 @@ def upload_xml_web(
         existing_invoice = repository.get_by_uuid(parsed_invoice.uuid)
         if existing_invoice is not None:
             duplicadas += 1
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="duplicate",
+                detail="uuid_ya_existente",
+            )
             detail_lines.append(
                 _format_upload_detail(
                     filename,
@@ -338,12 +392,26 @@ def upload_xml_web(
             )
             repository.create(invoice_data)
             nuevas += 1
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="stored",
+                detail="cfdi_procesado",
+            )
         except InvoiceProcessingError as exc:
             db.rollback()
             if exc.stage == "parse_xml":
                 invalidas += 1
             else:
                 errores += 1
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="processing_failed",
+                detail=exc.stage,
+            )
             detail_lines.append(
                 _format_upload_detail(
                     exc.filename or filename,
@@ -355,10 +423,24 @@ def upload_xml_web(
             db.rollback()
             invalidas += 1
             logger.warning("Business rule rejected XML upload: %s", exc)
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="business_rule_rejected",
+                detail="payment_relation",
+            )
             detail_lines.append(_format_upload_detail(filename, "payment_relation", str(exc)))
         except IntegrityError as exc:
             db.rollback()
             duplicadas += 1
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="duplicate",
+                detail="database_duplicate",
+            )
             if _is_duplicate_integrity_error(exc):
                 detail_lines.append(
                     _format_upload_detail(
@@ -379,6 +461,13 @@ def upload_xml_web(
             db.rollback()
             errores += 1
             logger.exception("Unexpected error processing XML upload %s: %s", filename, exc)
+            _security_event(
+                "xml_upload",
+                current_user=current_user,
+                filename=filename,
+                result="unexpected_error",
+                detail="exception",
+            )
             detail_lines.append(_format_upload_detail(filename, "unknown", str(exc)))
 
     return RedirectResponse(
@@ -426,8 +515,22 @@ def upload_bank_statement_web(
             file_bytes=file_bytes,
             filename=filename,
         )
+        _security_event(
+            "bank_statement_upload",
+            current_user=current_user,
+            filename=filename,
+            result="stored",
+            detail="bank_statement_processed",
+        )
     except ValueError as exc:
         db.rollback()
+        _security_event(
+            "bank_statement_upload",
+            current_user=current_user,
+            filename=filename,
+            result="rejected",
+            detail="validation_error",
+        )
         return RedirectResponse(
             url=web_url("/reconciliation", error=str(exc)),
             status_code=status.HTTP_303_SEE_OTHER,
@@ -435,6 +538,13 @@ def upload_bank_statement_web(
     except Exception as exc:
         db.rollback()
         logger.exception("Unexpected error processing bank statement %s: %s", filename, exc)
+        _security_event(
+            "bank_statement_upload",
+            current_user=current_user,
+            filename=filename,
+            result="unexpected_error",
+            detail="exception",
+        )
         return RedirectResponse(
             url=web_url("/reconciliation", error="No fue posible procesar el estado bancario."),
             status_code=status.HTTP_303_SEE_OTHER,

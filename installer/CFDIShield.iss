@@ -1,5 +1,5 @@
 #define MyAppName "CFDI Shield"
-#define MyAppVersion "1.0 RC"
+#define MyAppVersion "1.0"
 #define MyAppPublisher "CFDI Shield"
 #define MyAppExeName "CFDIShield.exe"
 #define MyServiceName "CFDIShield"

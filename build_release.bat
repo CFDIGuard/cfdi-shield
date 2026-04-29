@@ -5,9 +5,6 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 
 set "VERSION=%APP_VERSION%"
-if not defined VERSION (
-  for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$content = Get-Content -Raw '%ROOT%\app\core\config.py'; $match = [regex]::Match($content, 'app_version:\s*str\s*=\s*Field\(default=\"([^\"]+)\"'); if ($match.Success) { $match.Groups[1].Value }"`) do set "VERSION=%%V"
-)
 if not defined VERSION set "VERSION=1.0"
 for /f "usebackq delims=" %%V in (`powershell -NoProfile -Command "$value = '%VERSION%'; if ($value -match '^[0-9A-Za-z._-]+$') { $value } else { '1.0' }"`) do set "VERSION=%%V"
 set "BUILD_DATE=%BUILD_DATE%"
@@ -37,10 +34,10 @@ copy /y "%ROOT%\docs_cliente\MANUAL_USUARIO.md" "%DOCS_DIR%\MANUAL_USUARIO.md" >
 copy /y "%ROOT%\docs_cliente\AVISO_PRIVACIDAD.md" "%DOCS_DIR%\AVISO_PRIVACIDAD.md" >nul
 copy /y "%ROOT%\docs_cliente\TERMINOS_USO.md" "%DOCS_DIR%\TERMINOS_USO.md" >nul
 copy /y "%ROOT%\docs_cliente\PRECIOS.md" "%DOCS_DIR%\PRECIOS.md" >nul
-copy /y "%ROOT%\docs_cliente\CHECKLIST_ENTREGA_CFDI_SHIELD.md" "%RELEASE_BASE%\CHECKLIST_ENTREGA_CFDI_SHIELD.md" >nul
 
 echo [INFO] Copiando documentacion operativa...
 copy /y "%ROOT%\docs_operacion\MANUAL_INSTALACION.md" "%OPS_DIR%\MANUAL_INSTALACION.md" >nul
+copy /y "%ROOT%\docs_cliente\CHECKLIST_ENTREGA_CFDI_SHIELD.md" "%OPS_DIR%\CHECKLIST_ENTREGA_CFDI_SHIELD.md" >nul
 
 echo [INFO] Escribiendo README del paquete...
 (

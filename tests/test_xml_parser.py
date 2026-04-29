@@ -96,3 +96,39 @@ def test_parse_cfdi_xml_complemento_pago():
     assert payment.saldo_anterior == 1160
     assert payment.importe_pagado == 580
     assert payment.saldo_insoluto == 580
+
+
+def test_parse_cfdi_xml_invalido_falla_controlado():
+    xml = b"<cfdi:Comprobante><broken></cfdi:Comprobante>"
+
+    try:
+        parse_cfdi_xml(xml)
+    except ValueError as exc:
+        assert str(exc) == "El archivo XML no es valido."
+    else:
+        raise AssertionError("Se esperaba ValueError para XML invalido")
+
+
+def test_parse_cfdi_xml_con_dtd_falla_controlado():
+    xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4"
+                  xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital"
+                  Total="1.00"
+                  SubTotal="1.00"
+                  Moneda="MXN"
+                  Fecha="2024-05-10T10:00:00">
+  <cfdi:Emisor Rfc="AAA010101AAA" Nombre="Proveedor Demo" />
+  <cfdi:Receptor Rfc="BBB010101BBB" />
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital UUID="123e4567-e89b-12d3-a456-426614174000" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>
+"""
+
+    try:
+        parse_cfdi_xml(xml)
+    except ValueError as exc:
+        assert str(exc) == "El archivo XML no es valido."
+    else:
+        raise AssertionError("Se esperaba ValueError para XML con DTD")

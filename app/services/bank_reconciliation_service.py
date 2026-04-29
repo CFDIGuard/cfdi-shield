@@ -72,12 +72,12 @@ def _currency_matches(transaction: ParsedBankTransaction, invoice: Invoice) -> b
     return transaction_currency == invoice_currency
 
 
-def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[float, list[str]]:
+def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[float, list[str], bool]:
     score = 0.0
     reasons: list[str] = []
     invoice_total_mxn = _invoice_total_mxn(invoice)
     if invoice_total_mxn is None:
-        return score, reasons
+        return score, reasons, False
 
     amount_diff = abs(transaction.monto - invoice_total_mxn)
     if amount_diff <= 0.005:
@@ -87,7 +87,7 @@ def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> 
         score += 35
         reasons.append(f"Monto dentro de tolerancia (+/- {settings.bank_reconciliation_amount_tolerance:.2f})")
     else:
-        return 0.0, []
+        return 0.0, [], False
 
     date_score, date_reason = _date_match_score(transaction.fecha, invoice.fecha_emision)
     score += date_score
@@ -98,7 +98,8 @@ def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> 
         score += 20
         reasons.append("RFC o proveedor detectado en descripcion")
 
-    if _uuid_detected(transaction, invoice):
+    uuid_detected = _uuid_detected(transaction, invoice)
+    if uuid_detected:
         score += 30
         reasons.append("UUID detectado en referencia o descripcion")
 
@@ -106,11 +107,11 @@ def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> 
         score += 10
         reasons.append("Moneda coincide")
 
-    return min(score, 100.0), reasons
+    return min(score, 100.0), reasons, uuid_detected
 
 
-def _classify_match(score: float) -> str:
-    if score >= 80:
+def _classify_match(score: float, uuid_detected: bool) -> str:
+    if uuid_detected and score >= 80:
         return "CONCILIADO"
     if score >= 50:
         return "POSIBLE"
@@ -126,15 +127,17 @@ def reconcile_transactions(
         best_invoice: Invoice | None = None
         best_score = 0.0
         best_reasons: list[str] = []
+        best_uuid_detected = False
 
         for invoice in invoices:
-            score, reasons = _score_transaction(transaction, invoice)
+            score, reasons, uuid_detected = _score_transaction(transaction, invoice)
             if score > best_score:
                 best_invoice = invoice
                 best_score = score
                 best_reasons = reasons
+                best_uuid_detected = uuid_detected
 
-        status = _classify_match(best_score)
+        status = _classify_match(best_score, best_uuid_detected)
         if status == "PENDIENTE":
             best_invoice = None
             best_reasons = ["Sin coincidencia suficiente"]
