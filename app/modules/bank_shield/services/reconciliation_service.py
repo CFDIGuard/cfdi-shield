@@ -8,6 +8,7 @@ imports remain supported through temporary passthrough adapters.
 
 from datetime import datetime
 import re
+import unicodedata
 
 from sqlalchemy.orm import Session
 
@@ -20,10 +21,41 @@ from app.schemas.bank_reconciliation import BankReconciliationFilters
 
 
 UUID_PATTERN = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[1-5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}", re.IGNORECASE)
+BANKING_NOISE_WORDS = {
+    "PAGO",
+    "TRANSFERENCIA",
+    "TRANSF",
+    "SPEI",
+    "ABONO",
+    "CARGO",
+    "REF",
+    "REFERENCIA",
+    "CONCEPTO",
+    "PAG",
+    "TRASPASO",
+    "DEPOSITO",
+    "DEPOSITO",
+    "COBRO",
+}
 
 
 def _normalized_text(value: str | None) -> str:
     return str(value or "").strip().upper()
+
+
+def _normalize_search_text(value: str | None) -> str:
+    text = str(value or "").strip().upper()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(character for character in text if not unicodedata.combining(character))
+    return re.sub(r"[^A-Z0-9]+", " ", text).strip()
+
+
+def _meaningful_tokens(value: str | None) -> list[str]:
+    return [
+        token
+        for token in _normalize_search_text(value).split()
+        if len(token) >= 3 and token not in BANKING_NOISE_WORDS
+    ]
 
 
 def _invoice_total_mxn(invoice: Invoice) -> float | None:
@@ -54,14 +86,28 @@ def _date_match_score(transaction_date: str | None, invoice_date: str | None) ->
     return 0, None
 
 
-def _description_has_supplier(transaction: ParsedBankTransaction, invoice: Invoice) -> bool:
-    haystack = f"{transaction.descripcion} {transaction.referencia or ''}".upper()
-    if invoice.rfc_emisor and invoice.rfc_emisor.upper() in haystack:
-        return True
-    supplier_name = str(invoice.razon_social or "").strip().upper()
+def _supplier_match_score(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[int, str | None]:
+    haystack = _normalize_search_text(f"{transaction.descripcion} {transaction.referencia or ''}")
+
+    for rfc_value in (invoice.rfc_emisor, getattr(invoice, "rfc_receptor", None)):
+        normalized_rfc = _normalize_search_text(rfc_value)
+        if normalized_rfc and normalized_rfc in haystack:
+            return 25, "RFC detectado en descripcion"
+
+    supplier_name = _normalize_search_text(invoice.razon_social)
     if supplier_name and len(supplier_name) >= 6 and supplier_name in haystack:
-        return True
-    return False
+        return 25, "Proveedor detectado en descripcion"
+
+    haystack_tokens = set(_meaningful_tokens(f"{transaction.descripcion} {transaction.referencia or ''}"))
+    supplier_tokens = _meaningful_tokens(invoice.razon_social)
+    if len(supplier_tokens) >= 2 and haystack_tokens:
+        matched_tokens = [token for token in supplier_tokens if token in haystack_tokens]
+        if len(matched_tokens) >= 2:
+            coverage = len(matched_tokens) / len(supplier_tokens)
+            if coverage >= 0.6:
+                return 20, "Coincidencia por proveedor/nombre"
+
+    return 0, None
 
 
 def _uuid_detected(transaction: ParsedBankTransaction, invoice: Invoice) -> bool:
@@ -100,9 +146,10 @@ def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> 
     if date_reason:
         reasons.append(date_reason)
 
-    if _description_has_supplier(transaction, invoice):
-        score += 20
-        reasons.append("RFC o proveedor detectado en descripcion")
+    supplier_score, supplier_reason = _supplier_match_score(transaction, invoice)
+    score += supplier_score
+    if supplier_reason:
+        reasons.append(supplier_reason)
 
     uuid_detected = _uuid_detected(transaction, invoice)
     if uuid_detected:

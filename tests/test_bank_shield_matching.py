@@ -143,6 +143,52 @@ def test_heuristic_match_without_uuid_is_posible():
     assert row["matched_invoice_id"] == 2
 
 
+def test_supplier_name_match_without_uuid_is_posible():
+    invoice = _invoice_stub(
+        invoice_id=4,
+        uuid="EEEEEEEE-1111-4111-8111-EEEEEEEEEEEE",
+        total_mxn=875.0,
+        razon_social="ALEJANDRO LANDEROS RAMIREZ",
+        rfc_emisor="ALR010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="PAGO ALEJANDRO LANDEROS RAMIREZ",
+        referencia=None,
+        monto=875.0,
+        raw_hash="nombre-proveedor-exacto",
+    )
+
+    row = reconcile_transactions([transaction], [invoice])[0]
+
+    assert row["match_status"] == "POSIBLE"
+    assert row["matched_invoice_id"] == 4
+    assert row["match_score"] > 0
+    assert "proveedor" in str(row["match_reason"]).lower() or "nombre" in str(row["match_reason"]).lower()
+
+
+def test_supplier_name_match_with_banking_noise_stays_posible_without_uuid():
+    invoice = _invoice_stub(
+        invoice_id=5,
+        uuid="FFFFFFFF-2222-4222-8222-FFFFFFFFFFFF",
+        total_mxn=430.0,
+        razon_social="ARMANDO LIMA OROZCO",
+        rfc_emisor="ALO010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="TRANSFERENCIA ARMANDO LIMA OROZCO",
+        referencia="SPEI BANCA MOVIL",
+        monto=430.0,
+        raw_hash="nombre-proveedor-ruido",
+    )
+
+    row = reconcile_transactions([transaction], [invoice])[0]
+
+    assert row["match_status"] == "POSIBLE"
+    assert row["matched_invoice_id"] == 5
+    assert row["match_score"] >= 50
+    assert row["match_status"] != "CONCILIADO"
+
+
 def test_missing_match_is_pendiente():
     invoice = _invoice_stub(
         invoice_id=3,
