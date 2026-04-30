@@ -173,6 +173,58 @@
             padding: 14px;
         }
 
+        .executive-alerts {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .alert-card {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 14px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .alert-card.pending {
+            border-color: rgba(220, 38, 38, 0.18);
+            background: linear-gradient(180deg, rgba(255, 241, 242, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-card.warning {
+            border-color: rgba(180, 83, 9, 0.18);
+            background: linear-gradient(180deg, rgba(255, 247, 237, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-card.success {
+            border-color: rgba(21, 128, 61, 0.18);
+            background: linear-gradient(180deg, rgba(236, 253, 243, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .alert-value {
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .alert-copy {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
         .metric-label {
             color: var(--muted);
             font-size: 12px;
@@ -489,6 +541,117 @@
             font-weight: 700;
         }
 
+        .attention-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .attention-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .attention-card.high-priority {
+            border-color: rgba(220, 38, 38, 0.26);
+            box-shadow: 0 10px 24px rgba(220, 38, 38, 0.08);
+        }
+
+        .attention-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .attention-title {
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .attention-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .attention-description {
+            color: var(--ink);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .priority-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .priority-chip.high {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .priority-chip.medium {
+            background: var(--warning-soft);
+            color: var(--warning);
+        }
+
+        .priority-chip.low {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .match-factors {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .factor-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .factor-chip.positive {
+            background: var(--success-soft);
+            color: var(--success);
+            border-color: rgba(21, 128, 61, 0.18);
+        }
+
+        .factor-chip.warning {
+            background: var(--warning-soft);
+            color: var(--warning);
+            border-color: rgba(180, 83, 9, 0.18);
+        }
+
+        tr.row-emphasis-possible td {
+            background: rgba(255, 247, 237, 0.52);
+        }
+
+        tr.row-emphasis-pending td {
+            background: rgba(255, 241, 242, 0.52);
+        }
+
         @media (max-width: 960px) {
             .topbar, .hero, .panel-header, .upload-form {
                 flex-direction: column;
@@ -496,6 +659,10 @@
             }
 
             .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .executive-alerts {
                 grid-template-columns: 1fr;
             }
 
@@ -542,6 +709,24 @@
         {% if error %}
             <div class="notice error">{{ error }}</div>
         {% endif %}
+
+        <section class="executive-alerts" aria-label="Alertas ejecutivas">
+            <article class="alert-card pending">
+                <div class="alert-label">Movimientos sin identificar</div>
+                <div class="alert-value" id="alert-pendiente-amount">$0.00</div>
+                <div class="alert-copy"><span id="alert-pendiente-count">0</span> movimientos pendientes de clasificar o asignar.</div>
+            </article>
+            <article class="alert-card warning">
+                <div class="alert-label">Coincidencias débiles</div>
+                <div class="alert-value" id="alert-weak-count">0</div>
+                <div class="alert-copy">Casos con match posible pero evidencia todavía insuficiente para cerrar conciliación.</div>
+            </article>
+            <article class="alert-card success">
+                <div class="alert-label">Conciliaciones completas</div>
+                <div class="alert-value" id="alert-conciliado-amount">$0.00</div>
+                <div class="alert-copy"><span id="alert-conciliado-count">0</span> movimientos ya conciliados con mayor certeza.</div>
+            </article>
+        </section>
 
         <section class="grid" aria-label="Resumen de conciliacion">
             <article class="metric">
@@ -663,6 +848,17 @@
                 </div>
                 <div class="groups" id="reconciliation-groups"></div>
                 <div class="summary-note">Los grupos muestran conteo, monto acumulado y prioridad de revision por estado visible.</div>
+                <section class="panel" style="margin-top: 14px;">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Atencion requerida</div>
+                            <div class="panel-copy">Priorizacion automatica de movimientos que merecen revision operativa inmediata.</div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="attention-list" id="attention-required-list"></div>
+                    </div>
+                </section>
                 <div class="table-wrap" hidden>
                     <table aria-hidden="true">
                         <tbody id="legacy-reconciliation-table"></tbody>
@@ -708,6 +904,49 @@
             return `<strong>${escapeHtml(transaction.matched_invoice_provider || "-")}</strong><br><span class="muted">${escapeHtml(transaction.matched_invoice_uuid)}</span>`;
         }
 
+        function factorBadges(transaction) {
+            const reason = String(transaction.match_reason || "");
+            const reasons = reason
+                .split(";")
+                .map((item) => item.trim())
+                .filter(Boolean);
+            if (!reasons.length || reason === "Sin coincidencia suficiente") {
+                return '<span class="factor-chip warning">Sin evidencia fuerte</span>';
+            }
+
+            const chips = [];
+            const normalizedReason = reason.toUpperCase();
+            if (normalizedReason.includes("UUID")) {
+                chips.push('<span class="factor-chip positive">UUID</span>');
+            }
+            if (normalizedReason.includes("RFC")) {
+                chips.push('<span class="factor-chip positive">RFC</span>');
+            }
+            if (normalizedReason.includes("PROVEEDOR") || normalizedReason.includes("NOMBRE")) {
+                chips.push('<span class="factor-chip positive">Nombre</span>');
+            }
+            if (normalizedReason.includes("MONTO")) {
+                chips.push('<span class="factor-chip positive">Monto</span>');
+            }
+            if (normalizedReason.includes("FECHA")) {
+                chips.push('<span class="factor-chip">Fecha</span>');
+            }
+
+            const extraReasons = reasons
+                .filter((item) => {
+                    const upper = item.toUpperCase();
+                    return !upper.includes("UUID")
+                        && !upper.includes("RFC")
+                        && !upper.includes("PROVEEDOR")
+                        && !upper.includes("NOMBRE")
+                        && !upper.includes("MONTO")
+                        && !upper.includes("FECHA");
+                })
+                .map((item) => `<span class="factor-chip">${escapeHtml(item)}</span>`);
+
+            return [...chips, ...extraReasons].join("") || '<span class="factor-chip">Revision manual</span>';
+        }
+
         function scoreLevel(score) {
             const numericScore = Number(score || 0);
             if (numericScore >= 80) return { label: "ALTO", className: "high" };
@@ -724,7 +963,7 @@
                         <span class="score-level ${level.className}">${level.label}</span>
                         <span class="score-percent">${numericScore.toFixed(0)}%</span>
                     </div>
-                    <span class="muted">${numericScore.toFixed(2)} score</span>
+                    <div class="match-factors">${factorBadges(transaction)}</div>
                 </div>
             `;
         }
@@ -837,7 +1076,7 @@
                 return '<div class="group-empty">No hay movimientos visibles en este grupo.</div>';
             }
             const body = rows.map((row) => `
-                <tr data-row-id="${row.id}">
+                <tr data-row-id="${row.id}" class="${rowClass(row)}">
                     <td>${escapeHtml(row.fecha || "-")}</td>
                     <td>${escapeHtml(row.descripcion || "-")}</td>
                     <td>${escapeHtml(row.referencia || "-")}</td>
@@ -892,6 +1131,18 @@
             `;
         }
 
+        function rowClass(transaction) {
+            const score = Number(transaction.match_score || 0);
+            const amount = Number(transaction.monto || 0);
+            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= 70) {
+                return "row-emphasis-possible";
+            }
+            if ((transaction.match_status || "").toUpperCase() === "PENDIENTE" && amount >= 1000) {
+                return "row-emphasis-pending";
+            }
+            return "";
+        }
+
         function renderSummary(rows) {
             const groups = {
                 CONCILIADO: groupRows(rows, "CONCILIADO"),
@@ -913,11 +1164,93 @@
             document.getElementById("summary-pendiente-count").textContent = groups.PENDIENTE.length;
             document.getElementById("summary-total").textContent = rows.length;
             document.getElementById("summary-total-amount").textContent = `${formatMoney(totals.CONCILIADO + totals.POSIBLE + totals.PENDIENTE)} en movimientos visibles`;
+
+            const weakMatches = groups.POSIBLE.filter((row) => Number(row.match_score || 0) < 70);
+            document.getElementById("alert-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
+            document.getElementById("alert-pendiente-count").textContent = groups.PENDIENTE.length;
+            document.getElementById("alert-weak-count").textContent = weakMatches.length;
+            document.getElementById("alert-conciliado-amount").textContent = formatMoney(totals.CONCILIADO);
+            document.getElementById("alert-conciliado-count").textContent = groups.CONCILIADO.length;
+        }
+
+        function attentionPriority(transaction) {
+            const amount = Number(transaction.monto || 0);
+            const score = Number(transaction.match_score || 0);
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
+
+            if (status === "PENDIENTE" && amount >= 1000) {
+                return { label: "Alta prioridad", className: "high", weight: 1000 + amount };
+            }
+            if (status === "POSIBLE" && score >= 60 && score < 80) {
+                return { label: "Revision sugerida", className: "medium", weight: 700 + score + amount / 1000 };
+            }
+            if (status === "PENDIENTE") {
+                return { label: "Pendiente", className: "medium", weight: 500 + amount / 100 };
+            }
+            if (status === "POSIBLE") {
+                return { label: "Validar match", className: "low", weight: 300 + score };
+            }
+            return { label: "Seguimiento", className: "low", weight: 100 + score };
+        }
+
+        function attentionReason(transaction) {
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
+            const score = Number(transaction.match_score || 0);
+            const amount = Number(transaction.monto || 0);
+
+            if (status === "PENDIENTE" && amount >= 1000) {
+                return "Movimiento sin sugerencia confiable y con monto relevante. Conviene asignarlo o descartarlo pronto.";
+            }
+            if (status === "POSIBLE" && score >= 60 && score < 80) {
+                return "Hay una coincidencia utilizable, pero todavia necesita confirmacion operativa antes de cerrarla.";
+            }
+            if (status === "PENDIENTE") {
+                return "No se encontro una coincidencia suficiente; puede requerir busqueda manual o nueva carga.";
+            }
+            return "Conviene revisar la sugerencia para confirmar que el cruce sea correcto.";
+        }
+
+        function renderAttentionRequired(rows) {
+            const candidates = rows
+                .filter((row) => {
+                    const status = String(row.match_status || "PENDIENTE").toUpperCase();
+                    return status === "PENDIENTE" || status === "POSIBLE";
+                })
+                .map((row) => ({ row, priority: attentionPriority(row) }))
+                .sort((left, right) => right.priority.weight - left.priority.weight)
+                .slice(0, 6);
+
+            const container = document.getElementById("attention-required-list");
+            if (!container) return;
+
+            if (!candidates.length) {
+                container.innerHTML = '<div class="empty">No hay movimientos que requieran atencion inmediata en la vista actual.</div>';
+                return;
+            }
+
+            container.innerHTML = candidates.map(({ row, priority }) => `
+                <article class="attention-card ${priority.className === "high" ? "high-priority" : ""}">
+                    <div class="attention-head">
+                        <div>
+                            <div class="attention-title">${escapeHtml(row.descripcion || "Movimiento bancario")}</div>
+                            <div class="attention-meta">
+                                <span>${formatMoney(row.monto)}</span>
+                                <span>${escapeHtml(row.fecha || "-")}</span>
+                                <span>${escapeHtml(row.referencia || "Sin referencia")}</span>
+                            </div>
+                        </div>
+                        <span class="priority-chip ${priority.className}">${priority.label}</span>
+                    </div>
+                    <div class="match-factors">${factorBadges(row)}</div>
+                    <div class="attention-description">${escapeHtml(attentionReason(row))}</div>
+                </article>
+            `).join("");
         }
 
         function renderReconciliationView() {
             const visibleRows = reconciliationRows.filter(passesQuickFilters);
             renderSummary(visibleRows);
+            renderAttentionRequired(visibleRows);
 
             const container = document.getElementById("reconciliation-groups");
             if (!container) return;
