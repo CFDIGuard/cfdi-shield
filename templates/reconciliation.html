@@ -173,6 +173,58 @@
             padding: 14px;
         }
 
+        .executive-alerts {
+            margin-top: 14px;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .alert-card {
+            background: var(--surface);
+            border: 1px solid rgba(219, 228, 238, 0.92);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            padding: 14px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .alert-card.pending {
+            border-color: rgba(220, 38, 38, 0.18);
+            background: linear-gradient(180deg, rgba(255, 241, 242, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-card.warning {
+            border-color: rgba(180, 83, 9, 0.18);
+            background: linear-gradient(180deg, rgba(255, 247, 237, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-card.success {
+            border-color: rgba(21, 128, 61, 0.18);
+            background: linear-gradient(180deg, rgba(236, 253, 243, 0.9), rgba(255, 255, 255, 0.98));
+        }
+
+        .alert-label {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .alert-value {
+            font-size: 26px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .alert-copy {
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+        }
+
         .metric-label {
             color: var(--muted);
             font-size: 12px;
@@ -184,6 +236,13 @@
             margin-top: 8px;
             font-size: 24px;
             font-weight: 900;
+        }
+
+        .metric-meta {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
         }
 
         .panel {
@@ -213,6 +272,23 @@
 
         .panel-body {
             padding: 14px;
+        }
+
+        .quick-filters {
+            display: grid;
+            gap: 10px;
+        }
+
+        .quick-filters-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 1.4fr repeat(2, minmax(0, 0.8fr));
+            gap: 10px;
+        }
+
+        .quick-filter-hint {
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
         }
 
         .upload-form {
@@ -359,6 +435,223 @@
             color: var(--muted);
         }
 
+        .groups {
+            display: grid;
+            gap: 14px;
+        }
+
+        .group-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            overflow: hidden;
+        }
+
+        .group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px;
+            border-bottom: 1px solid var(--line);
+            background: var(--surface-soft);
+        }
+
+        .group-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .group-title {
+            font-size: 15px;
+            font-weight: 900;
+        }
+
+        .group-stats {
+            display: flex;
+            align-items: center;
+            gap: 8px 12px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .group-table {
+            width: 100%;
+            min-width: 1180px;
+        }
+
+        .group-empty {
+            padding: 18px 14px;
+            color: var(--muted);
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .score-stack {
+            display: grid;
+            gap: 6px;
+        }
+
+        .score-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .score-level {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.02em;
+        }
+
+        .score-level.high {
+            background: var(--success-soft);
+            color: var(--success);
+        }
+
+        .score-level.medium {
+            background: var(--warning-soft);
+            color: var(--warning);
+        }
+
+        .score-level.low {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .score-percent {
+            font-weight: 900;
+            color: var(--ink);
+        }
+
+        .summary-note {
+            margin-top: 10px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .attention-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .attention-card {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--surface-strong);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .attention-card.high-priority {
+            border-color: rgba(220, 38, 38, 0.26);
+            box-shadow: 0 10px 24px rgba(220, 38, 38, 0.08);
+        }
+
+        .attention-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .attention-title {
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .attention-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .attention-description {
+            color: var(--ink);
+            font-size: 13px;
+            line-height: 1.55;
+        }
+
+        .priority-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .priority-chip.high {
+            background: var(--danger-soft);
+            color: var(--danger);
+        }
+
+        .priority-chip.medium {
+            background: var(--warning-soft);
+            color: var(--warning);
+        }
+
+        .priority-chip.low {
+            background: var(--primary-soft);
+            color: var(--primary);
+        }
+
+        .match-factors {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .factor-chip {
+            display: inline-flex;
+            align-items: center;
+            min-height: 24px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            color: var(--ink);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .factor-chip.positive {
+            background: var(--success-soft);
+            color: var(--success);
+            border-color: rgba(21, 128, 61, 0.18);
+        }
+
+        .factor-chip.warning {
+            background: var(--warning-soft);
+            color: var(--warning);
+            border-color: rgba(180, 83, 9, 0.18);
+        }
+
+        tr.row-emphasis-possible td {
+            background: rgba(255, 247, 237, 0.52);
+        }
+
+        tr.row-emphasis-pending td {
+            background: rgba(255, 241, 242, 0.52);
+        }
+
         @media (max-width: 960px) {
             .topbar, .hero, .panel-header, .upload-form {
                 flex-direction: column;
@@ -366,6 +659,14 @@
             }
 
             .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .executive-alerts {
+                grid-template-columns: 1fr;
+            }
+
+            .quick-filters-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -409,22 +710,44 @@
             <div class="notice error">{{ error }}</div>
         {% endif %}
 
+        <section class="executive-alerts" aria-label="Alertas ejecutivas">
+            <article class="alert-card pending">
+                <div class="alert-label">Movimientos sin identificar</div>
+                <div class="alert-value" id="alert-pendiente-amount">$0.00</div>
+                <div class="alert-copy"><span id="alert-pendiente-count">0</span> movimientos pendientes de clasificar o asignar.</div>
+            </article>
+            <article class="alert-card warning">
+                <div class="alert-label">Coincidencias débiles</div>
+                <div class="alert-value" id="alert-weak-count">0</div>
+                <div class="alert-copy">Casos con match posible pero evidencia todavía insuficiente para cerrar conciliación.</div>
+            </article>
+            <article class="alert-card success">
+                <div class="alert-label">Conciliaciones completas</div>
+                <div class="alert-value" id="alert-conciliado-amount">$0.00</div>
+                <div class="alert-copy"><span id="alert-conciliado-count">0</span> movimientos ya conciliados con mayor certeza.</div>
+            </article>
+        </section>
+
         <section class="grid" aria-label="Resumen de conciliacion">
             <article class="metric">
-                <div class="metric-label">Total movimientos</div>
+                <div class="metric-label">Conciliado</div>
+                <div class="metric-value" id="summary-conciliado-amount">$0.00</div>
+                <div class="metric-meta"><span id="summary-conciliado-count">{{ summary.conciliados }}</span> movimientos listos</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Posible</div>
+                <div class="metric-value" id="summary-posible-amount">$0.00</div>
+                <div class="metric-meta"><span id="summary-posible-count">{{ summary.posibles }}</span> movimientos por confirmar</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Pendiente</div>
+                <div class="metric-value" id="summary-pendiente-amount">$0.00</div>
+                <div class="metric-meta"><span id="summary-pendiente-count">{{ summary.pendientes }}</span> movimientos sin match</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Total visible</div>
                 <div class="metric-value" id="summary-total">{{ summary.total_movimientos }}</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Conciliados</div>
-                <div class="metric-value" id="summary-conciliados">{{ summary.conciliados }}</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Posibles</div>
-                <div class="metric-value" id="summary-posibles">{{ summary.posibles }}</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Pendientes</div>
-                <div class="metric-value" id="summary-pendientes">{{ summary.pendientes }}</div>
+                <div class="metric-meta" id="summary-total-amount">$0.00 en movimientos cargados</div>
             </article>
         </section>
 
@@ -492,82 +815,53 @@
                 </div>
             </div>
             {% if rows %}
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Descripcion</th>
-                                <th>Referencia</th>
-                                <th>Monto</th>
-                                <th>Origen</th>
-                                <th>Estado</th>
-                                <th>CFDI sugerido</th>
-                                <th>Score</th>
-                                <th>Motivo</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in rows %}
-                                <tr data-row-id="{{ row.id }}">
-                                    <td>{{ row.fecha or "-" }}</td>
-                                    <td>{{ row.descripcion }}</td>
-                                    <td>{{ row.referencia or "-" }}</td>
-                                    <td>${{ "{:,.2f}".format(row.monto) }}</td>
-                                    <td class="origin-cell">
-                                        {% if row.origen == "MANUAL" %}
-                                            <span class="tag info">MANUAL</span>
-                                        {% else %}
-                                            <span class="tag info">AUTOMATICO</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="status-cell">
-                                        {% if row.match_status == "CONCILIADO" %}
-                                            <span class="tag success">CONCILIADO</span>
-                                        {% elif row.match_status == "POSIBLE" %}
-                                            <span class="tag warning">POSIBLE</span>
-                                        {% else %}
-                                            <span class="tag danger">PENDIENTE</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="suggested-cell">
-                                        {% if row.matched_invoice_uuid %}
-                                            <strong>{{ row.matched_invoice_provider or "-" }}</strong><br>
-                                            <span class="muted">{{ row.matched_invoice_uuid }}</span>
-                                        {% else %}
-                                            <span class="muted">Sin sugerencia</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="score-cell">{{ "{:,.2f}".format(row.match_score) }}</td>
-                                    <td class="reason-cell">{{ row.match_reason or "-" }}</td>
-                                    <td>
-                                        <div class="inline-actions">
-                                            {% if row.match_status == "POSIBLE" and row.matched_invoice_id %}
-                                                <form class="js-action-form" action="/reconciliation/confirm/{{ row.id }}" method="post">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button class="btn-confirm" type="submit">Confirmar</button>
-                                                </form>
-                                            {% endif %}
-                                            <div class="assign-row">
-                                                <input type="hidden" class="js-csrf-token" value="{{ csrf_token() }}">
-                                                <select class="invoice-select">
-                                                    <option value="">Cambiar CFDI...</option>
-                                                    {% for option in invoice_options %}
-                                                        <option value="{{ option.id }}" {% if row.matched_invoice_id == option.id %}selected{% endif %}>{{ option.label }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                                <button class="btn-assign js-assign-button" type="button" data-transaction-id="{{ row.id }}">Asignar</button>
-                                            </div>
-                                            <form class="js-action-form" action="/reconciliation/reject/{{ row.id }}" method="post">
-                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                <button class="btn-reject" type="submit">No conciliable</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
+                <div class="panel-body">
+                    <div class="quick-filters">
+                        <div>
+                            <div class="panel-title">Filtros rapidos de vista</div>
+                            <div class="quick-filter-hint">Ajustan la presentacion sin recargar la pagina ni afectar exportaciones.</div>
+                        </div>
+                        <div class="quick-filters-grid">
+                            <div class="field">
+                                <label for="quick-estado">Estado rapido</label>
+                                <select id="quick-estado">
+                                    <option value="">Todos</option>
+                                    <option value="CONCILIADO">CONCILIADO</option>
+                                    <option value="POSIBLE">POSIBLE</option>
+                                    <option value="PENDIENTE">PENDIENTE</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="quick-texto">Texto</label>
+                                <input id="quick-texto" type="text" placeholder="Descripcion, referencia, proveedor o UUID">
+                            </div>
+                            <div class="field">
+                                <label for="quick-monto-min">Monto minimo</label>
+                                <input id="quick-monto-min" type="number" step="0.01" min="0" placeholder="0.00">
+                            </div>
+                            <div class="field">
+                                <label for="quick-monto-max">Monto maximo</label>
+                                <input id="quick-monto-max" type="number" step="0.01" min="0" placeholder="999999.99">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="groups" id="reconciliation-groups"></div>
+                <div class="summary-note">Los grupos muestran conteo, monto acumulado y prioridad de revision por estado visible.</div>
+                <section class="panel" style="margin-top: 14px;">
+                    <div class="panel-header">
+                        <div>
+                            <div class="panel-title">Atencion requerida</div>
+                            <div class="panel-copy">Priorizacion automatica de movimientos que merecen revision operativa inmediata.</div>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="attention-list" id="attention-required-list"></div>
+                    </div>
+                </section>
+                <div class="table-wrap" hidden>
+                    <table aria-hidden="true">
+                        <tbody id="legacy-reconciliation-table"></tbody>
                     </table>
                 </div>
             {% else %}
@@ -583,6 +877,14 @@
                 .replace(/>/g, "&gt;")
                 .replace(/\"/g, "&quot;")
                 .replace(/'/g, "&#39;");
+        }
+
+        const csrfToken = "{{ csrf_token() }}";
+        const invoiceOptions = {{ invoice_options|tojson }};
+        const reconciliationRows = {{ rows|tojson if rows else '[]' }};
+
+        function formatMoney(value) {
+            return `$${Number(value || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
 
         function statusBadge(status) {
@@ -602,14 +904,71 @@
             return `<strong>${escapeHtml(transaction.matched_invoice_provider || "-")}</strong><br><span class="muted">${escapeHtml(transaction.matched_invoice_uuid)}</span>`;
         }
 
-        function updateSummary(summary) {
-            document.getElementById("summary-total").textContent = summary.total_movimientos;
-            document.getElementById("summary-conciliados").textContent = summary.conciliados;
-            document.getElementById("summary-posibles").textContent = summary.posibles;
-            document.getElementById("summary-pendientes").textContent = summary.pendientes;
+        function factorBadges(transaction) {
+            const reason = String(transaction.match_reason || "");
+            const reasons = reason
+                .split(";")
+                .map((item) => item.trim())
+                .filter(Boolean);
+            if (!reasons.length || reason === "Sin coincidencia suficiente") {
+                return '<span class="factor-chip warning">Sin evidencia fuerte</span>';
+            }
+
+            const chips = [];
+            const normalizedReason = reason.toUpperCase();
+            if (normalizedReason.includes("UUID")) {
+                chips.push('<span class="factor-chip positive">UUID</span>');
+            }
+            if (normalizedReason.includes("RFC")) {
+                chips.push('<span class="factor-chip positive">RFC</span>');
+            }
+            if (normalizedReason.includes("PROVEEDOR") || normalizedReason.includes("NOMBRE")) {
+                chips.push('<span class="factor-chip positive">Nombre</span>');
+            }
+            if (normalizedReason.includes("MONTO")) {
+                chips.push('<span class="factor-chip positive">Monto</span>');
+            }
+            if (normalizedReason.includes("FECHA")) {
+                chips.push('<span class="factor-chip">Fecha</span>');
+            }
+
+            const extraReasons = reasons
+                .filter((item) => {
+                    const upper = item.toUpperCase();
+                    return !upper.includes("UUID")
+                        && !upper.includes("RFC")
+                        && !upper.includes("PROVEEDOR")
+                        && !upper.includes("NOMBRE")
+                        && !upper.includes("MONTO")
+                        && !upper.includes("FECHA");
+                })
+                .map((item) => `<span class="factor-chip">${escapeHtml(item)}</span>`);
+
+            return [...chips, ...extraReasons].join("") || '<span class="factor-chip">Revision manual</span>';
         }
 
-        function activeFilters() {
+        function scoreLevel(score) {
+            const numericScore = Number(score || 0);
+            if (numericScore >= 80) return { label: "ALTO", className: "high" };
+            if (numericScore >= 50) return { label: "MEDIO", className: "medium" };
+            return { label: "BAJO", className: "low" };
+        }
+
+        function scoreCell(transaction) {
+            const numericScore = Number(transaction.match_score || 0);
+            const level = scoreLevel(numericScore);
+            return `
+                <div class="score-stack">
+                    <div class="score-top">
+                        <span class="score-level ${level.className}">${level.label}</span>
+                        <span class="score-percent">${numericScore.toFixed(0)}%</span>
+                    </div>
+                    <div class="match-factors">${factorBadges(transaction)}</div>
+                </div>
+            `;
+        }
+
+        function activeServerFilters() {
             return {
                 estado: document.getElementById("estado")?.value || "",
                 origen: document.getElementById("origen")?.value || "",
@@ -617,9 +976,18 @@
             };
         }
 
+        function activeQuickFilters() {
+            return {
+                estado: document.getElementById("quick-estado")?.value || "",
+                texto: document.getElementById("quick-texto")?.value.trim() || "",
+                montoMin: document.getElementById("quick-monto-min")?.value || "",
+                montoMax: document.getElementById("quick-monto-max")?.value || "",
+            };
+        }
+
         function buildActionUrl(url) {
             const params = new URLSearchParams();
-            const filters = activeFilters();
+            const filters = activeServerFilters();
             if (filters.estado) params.set("estado", filters.estado);
             if (filters.origen) params.set("origen", filters.origen);
             if (filters.busqueda) params.set("busqueda", filters.busqueda);
@@ -627,15 +995,12 @@
             return suffix ? `${url}?${suffix}` : url;
         }
 
-        function passesActiveFilters(transaction) {
-            const filters = activeFilters();
+        function passesQuickFilters(transaction) {
+            const filters = activeQuickFilters();
             if (filters.estado && (transaction.match_status || "").toUpperCase() !== filters.estado.toUpperCase()) {
                 return false;
             }
-            if (filters.origen && (transaction.origen || "").toUpperCase() !== filters.origen.toUpperCase()) {
-                return false;
-            }
-            if (filters.busqueda) {
+            if (filters.texto) {
                 const haystack = [
                     transaction.descripcion,
                     transaction.referencia,
@@ -643,22 +1008,257 @@
                     transaction.matched_invoice_provider,
                     transaction.matched_invoice_uuid,
                 ].join(" ").toUpperCase();
-                if (!haystack.includes(filters.busqueda.toUpperCase())) {
+                if (!haystack.includes(filters.texto.toUpperCase())) {
                     return false;
                 }
+            }
+            const amount = Number(transaction.monto || 0);
+            const min = Number(filters.montoMin || 0);
+            const max = filters.montoMax === "" ? null : Number(filters.montoMax);
+            if (filters.montoMin !== "" && amount < min) {
+                return false;
+            }
+            if (max !== null && !Number.isNaN(max) && amount > max) {
+                return false;
             }
             return true;
         }
 
-        function updateRow(transaction) {
-            const row = document.querySelector(`tr[data-row-id="${transaction.id}"]`);
-            if (!row) return;
-            row.querySelector(".origin-cell").innerHTML = originBadge(transaction.origen);
-            row.querySelector(".status-cell").innerHTML = statusBadge(transaction.match_status);
-            row.querySelector(".suggested-cell").innerHTML = suggestedHtml(transaction);
-            row.querySelector(".score-cell").textContent = Number(transaction.match_score || 0).toFixed(2);
-            row.querySelector(".reason-cell").textContent = transaction.match_reason || "-";
-            row.style.display = passesActiveFilters(transaction) ? "" : "none";
+        function groupLabel(status) {
+            if (status === "CONCILIADO") return "Conciliado";
+            if (status === "POSIBLE") return "Posible";
+            return "Pendiente";
+        }
+
+        function invoiceSelectHtml(selectedId) {
+            const options = ['<option value="">Cambiar CFDI...</option>'];
+            invoiceOptions.forEach((option) => {
+                const selected = String(selectedId || "") === String(option.id) ? " selected" : "";
+                options.push(`<option value="${escapeHtml(option.id)}"${selected}>${escapeHtml(option.label)}</option>`);
+            });
+            return options.join("");
+        }
+
+        function actionHtml(transaction) {
+            const confirmHtml = transaction.match_status === "POSIBLE" && transaction.matched_invoice_id
+                ? `
+                    <form class="js-action-form" action="/reconciliation/confirm/${transaction.id}" method="post">
+                        <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
+                        <button class="btn-confirm" type="submit">Confirmar match</button>
+                    </form>
+                `
+                : "";
+
+            return `
+                <div class="inline-actions">
+                    ${confirmHtml}
+                    <div class="assign-row">
+                        <input type="hidden" class="js-csrf-token" value="${escapeHtml(csrfToken)}">
+                        <select class="invoice-select">
+                            ${invoiceSelectHtml(transaction.matched_invoice_id)}
+                        </select>
+                        <button class="btn-assign js-assign-button" type="button" data-transaction-id="${transaction.id}">Asignar CFDI</button>
+                    </div>
+                    <form class="js-action-form" action="/reconciliation/reject/${transaction.id}" method="post">
+                        <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
+                        <button class="btn-reject" type="submit">Rechazar match</button>
+                    </form>
+                </div>
+            `;
+        }
+
+        function groupRows(rows, status) {
+            return rows.filter((row) => (row.match_status || "PENDIENTE").toUpperCase() === status);
+        }
+
+        function renderGroupTable(rows) {
+            if (!rows.length) {
+                return '<div class="group-empty">No hay movimientos visibles en este grupo.</div>';
+            }
+            const body = rows.map((row) => `
+                <tr data-row-id="${row.id}" class="${rowClass(row)}">
+                    <td>${escapeHtml(row.fecha || "-")}</td>
+                    <td>${escapeHtml(row.descripcion || "-")}</td>
+                    <td>${escapeHtml(row.referencia || "-")}</td>
+                    <td>${formatMoney(row.monto)}</td>
+                    <td>${originBadge(row.origen)}</td>
+                    <td>${statusBadge(row.match_status)}</td>
+                    <td>${suggestedHtml(row)}</td>
+                    <td>${scoreCell(row)}</td>
+                    <td>${escapeHtml(row.match_reason || "-")}</td>
+                    <td>${actionHtml(row)}</td>
+                </tr>
+            `).join("");
+            return `
+                <div class="table-wrap">
+                    <table class="group-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Descripcion</th>
+                                <th>Referencia</th>
+                                <th>Monto</th>
+                                <th>Origen</th>
+                                <th>Estado</th>
+                                <th>CFDI sugerido</th>
+                                <th>Score</th>
+                                <th>Motivo</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>${body}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function renderGroupSection(status, rows) {
+            const total = rows.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0);
+            return `
+                <section class="group-card">
+                    <div class="group-header">
+                        <div class="group-title-wrap">
+                            <div class="group-title">${groupLabel(status)}</div>
+                            ${statusBadge(status)}
+                        </div>
+                        <div class="group-stats">
+                            <span>${rows.length} movimientos</span>
+                            <span>${formatMoney(total)}</span>
+                        </div>
+                    </div>
+                    ${renderGroupTable(rows)}
+                </section>
+            `;
+        }
+
+        function rowClass(transaction) {
+            const score = Number(transaction.match_score || 0);
+            const amount = Number(transaction.monto || 0);
+            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= 70) {
+                return "row-emphasis-possible";
+            }
+            if ((transaction.match_status || "").toUpperCase() === "PENDIENTE" && amount >= 1000) {
+                return "row-emphasis-pending";
+            }
+            return "";
+        }
+
+        function renderSummary(rows) {
+            const groups = {
+                CONCILIADO: groupRows(rows, "CONCILIADO"),
+                POSIBLE: groupRows(rows, "POSIBLE"),
+                PENDIENTE: groupRows(rows, "PENDIENTE"),
+            };
+
+            const totals = {
+                CONCILIADO: groups.CONCILIADO.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
+                POSIBLE: groups.POSIBLE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
+                PENDIENTE: groups.PENDIENTE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
+            };
+
+            document.getElementById("summary-conciliado-amount").textContent = formatMoney(totals.CONCILIADO);
+            document.getElementById("summary-conciliado-count").textContent = groups.CONCILIADO.length;
+            document.getElementById("summary-posible-amount").textContent = formatMoney(totals.POSIBLE);
+            document.getElementById("summary-posible-count").textContent = groups.POSIBLE.length;
+            document.getElementById("summary-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
+            document.getElementById("summary-pendiente-count").textContent = groups.PENDIENTE.length;
+            document.getElementById("summary-total").textContent = rows.length;
+            document.getElementById("summary-total-amount").textContent = `${formatMoney(totals.CONCILIADO + totals.POSIBLE + totals.PENDIENTE)} en movimientos visibles`;
+
+            const weakMatches = groups.POSIBLE.filter((row) => Number(row.match_score || 0) < 70);
+            document.getElementById("alert-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
+            document.getElementById("alert-pendiente-count").textContent = groups.PENDIENTE.length;
+            document.getElementById("alert-weak-count").textContent = weakMatches.length;
+            document.getElementById("alert-conciliado-amount").textContent = formatMoney(totals.CONCILIADO);
+            document.getElementById("alert-conciliado-count").textContent = groups.CONCILIADO.length;
+        }
+
+        function attentionPriority(transaction) {
+            const amount = Number(transaction.monto || 0);
+            const score = Number(transaction.match_score || 0);
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
+
+            if (status === "PENDIENTE" && amount >= 1000) {
+                return { label: "Alta prioridad", className: "high", weight: 1000 + amount };
+            }
+            if (status === "POSIBLE" && score >= 60 && score < 80) {
+                return { label: "Revision sugerida", className: "medium", weight: 700 + score + amount / 1000 };
+            }
+            if (status === "PENDIENTE") {
+                return { label: "Pendiente", className: "medium", weight: 500 + amount / 100 };
+            }
+            if (status === "POSIBLE") {
+                return { label: "Validar match", className: "low", weight: 300 + score };
+            }
+            return { label: "Seguimiento", className: "low", weight: 100 + score };
+        }
+
+        function attentionReason(transaction) {
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
+            const score = Number(transaction.match_score || 0);
+            const amount = Number(transaction.monto || 0);
+
+            if (status === "PENDIENTE" && amount >= 1000) {
+                return "Movimiento sin sugerencia confiable y con monto relevante. Conviene asignarlo o descartarlo pronto.";
+            }
+            if (status === "POSIBLE" && score >= 60 && score < 80) {
+                return "Hay una coincidencia utilizable, pero todavia necesita confirmacion operativa antes de cerrarla.";
+            }
+            if (status === "PENDIENTE") {
+                return "No se encontro una coincidencia suficiente; puede requerir busqueda manual o nueva carga.";
+            }
+            return "Conviene revisar la sugerencia para confirmar que el cruce sea correcto.";
+        }
+
+        function renderAttentionRequired(rows) {
+            const candidates = rows
+                .filter((row) => {
+                    const status = String(row.match_status || "PENDIENTE").toUpperCase();
+                    return status === "PENDIENTE" || status === "POSIBLE";
+                })
+                .map((row) => ({ row, priority: attentionPriority(row) }))
+                .sort((left, right) => right.priority.weight - left.priority.weight)
+                .slice(0, 6);
+
+            const container = document.getElementById("attention-required-list");
+            if (!container) return;
+
+            if (!candidates.length) {
+                container.innerHTML = '<div class="empty">No hay movimientos que requieran atencion inmediata en la vista actual.</div>';
+                return;
+            }
+
+            container.innerHTML = candidates.map(({ row, priority }) => `
+                <article class="attention-card ${priority.className === "high" ? "high-priority" : ""}">
+                    <div class="attention-head">
+                        <div>
+                            <div class="attention-title">${escapeHtml(row.descripcion || "Movimiento bancario")}</div>
+                            <div class="attention-meta">
+                                <span>${formatMoney(row.monto)}</span>
+                                <span>${escapeHtml(row.fecha || "-")}</span>
+                                <span>${escapeHtml(row.referencia || "Sin referencia")}</span>
+                            </div>
+                        </div>
+                        <span class="priority-chip ${priority.className}">${priority.label}</span>
+                    </div>
+                    <div class="match-factors">${factorBadges(row)}</div>
+                    <div class="attention-description">${escapeHtml(attentionReason(row))}</div>
+                </article>
+            `).join("");
+        }
+
+        function renderReconciliationView() {
+            const visibleRows = reconciliationRows.filter(passesQuickFilters);
+            renderSummary(visibleRows);
+            renderAttentionRequired(visibleRows);
+
+            const container = document.getElementById("reconciliation-groups");
+            if (!container) return;
+            container.innerHTML = [
+                renderGroupSection("CONCILIADO", groupRows(visibleRows, "CONCILIADO")),
+                renderGroupSection("POSIBLE", groupRows(visibleRows, "POSIBLE")),
+                renderGroupSection("PENDIENTE", groupRows(visibleRows, "PENDIENTE")),
+            ].join("");
         }
 
         async function postAction(url, formData) {
@@ -671,39 +1271,52 @@
             if (!response.ok) {
                 throw new Error(payload.detail || "No fue posible completar la accion.");
             }
-            updateRow(payload.transaction);
-            updateSummary(payload.summary);
+            const rowIndex = reconciliationRows.findIndex((row) => String(row.id) === String(payload.transaction.id));
+            if (rowIndex >= 0) {
+                reconciliationRows[rowIndex] = payload.transaction;
+            }
+            renderReconciliationView();
         }
 
-        document.querySelectorAll(".js-action-form").forEach((form) => {
-            form.addEventListener("submit", async (event) => {
-                event.preventDefault();
-                try {
-                    await postAction(form.action, new FormData(form));
-                } catch (error) {
-                    alert(error.message);
-                }
+        document.addEventListener("submit", async (event) => {
+            const form = event.target.closest(".js-action-form");
+            if (!form) return;
+            event.preventDefault();
+            try {
+                await postAction(form.action, new FormData(form));
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.addEventListener("click", async (event) => {
+            const button = event.target.closest(".js-assign-button");
+            if (!button) return;
+            const row = button.closest("tr");
+            const select = row.querySelector(".invoice-select");
+            if (!select.value) {
+                alert("Selecciona un CFDI para asignar.");
+                return;
+            }
+            const csrfInput = row.querySelector(".js-csrf-token");
+            const formData = new FormData();
+            formData.append("csrf_token", csrfInput ? csrfInput.value : "");
+            try {
+                await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`, formData);
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        ["quick-estado", "quick-texto", "quick-monto-min", "quick-monto-max"].forEach((fieldId) => {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            field.addEventListener(field.tagName === "SELECT" ? "change" : "input", () => {
+                renderReconciliationView();
             });
         });
 
-        document.querySelectorAll(".js-assign-button").forEach((button) => {
-            button.addEventListener("click", async () => {
-                const row = button.closest("tr");
-                const select = row.querySelector(".invoice-select");
-                if (!select.value) {
-                    alert("Selecciona un CFDI para asignar.");
-                    return;
-                }
-                const csrfInput = row.querySelector(".js-csrf-token");
-                const formData = new FormData();
-                formData.append("csrf_token", csrfInput ? csrfInput.value : "");
-                try {
-                    await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`, formData);
-                } catch (error) {
-                    alert(error.message);
-                }
-            });
-        });
+        renderReconciliationView();
     </script>
 </body>
 </html>

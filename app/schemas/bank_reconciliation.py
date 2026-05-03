@@ -1,3 +1,9 @@
+"""Bank Shield v0.1 internal module component.
+
+Current implementation remains in legacy shared app structure until modular
+migration is safe.
+"""
+
 from pydantic import BaseModel
 
 

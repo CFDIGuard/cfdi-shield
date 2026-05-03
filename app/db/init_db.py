@@ -13,6 +13,7 @@ from app.models import (
     PaymentComplement,
     SatValidationCache,
     User,
+    UserSession,
 )
 
 

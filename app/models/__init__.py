@@ -4,6 +4,7 @@ from app.models.organization import Organization, OrganizationMembership
 from app.models.payment_complement import PaymentComplement
 from app.models.sat_validation_cache import SatValidationCache
 from app.models.user import User
+from app.models.user_session import UserSession
 
 __all__ = [
     "BankTransaction",
@@ -13,4 +14,5 @@ __all__ = [
     "PaymentComplement",
     "SatValidationCache",
     "User",
+    "UserSession",
 ]

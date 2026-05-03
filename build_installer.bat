@@ -11,12 +11,19 @@ call "%~dp0build_exe.bat"
 if errorlevel 1 exit /b 1
 
 set "ISCC=C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+set "NSSM_EXE=C:\nssm\win64\nssm.exe"
 if not exist "%ISCC%" set "ISCC=C:\Program Files\Inno Setup 6\ISCC.exe"
 if not exist "%ISCC%" set "ISCC=%LOCALAPPDATA%\Programs\Inno Setup 6\ISCC.exe"
 
 if not exist "%ISCC%" (
   echo [ERROR] No se encontro Inno Setup Compiler.
   echo Instala Inno Setup 6 y vuelve a ejecutar este script.
+  exit /b 1
+)
+
+if not exist "%NSSM_EXE%" (
+  echo [ERROR] No se encontro NSSM en %NSSM_EXE%
+  echo El instalador actual depende de ese archivo para registrar el servicio Windows.
   exit /b 1
 )
 
