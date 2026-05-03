@@ -14,9 +14,15 @@ def _invoice_option(invoice) -> dict[str, object]:
         "label": f"{invoice.uuid} | {invoice.razon_social or '-'} | ${float(total_mxn or 0):,.2f}",
     }
 
-
-def build_invoice_options(db: Session, user_id: int) -> list[dict[str, object]]:
-    """Build invoice options for the current reconciliation dropdown without changing its contract."""
+def build_invoice_options(
+    db: Session,
+    user_id: int,
+    limit: int | None = None,
+) -> list[dict[str, object]]:
+    """Build invoice options for reconciliation without changing the current dropdown contract."""
 
     repository = InvoiceRepository(db, user_id=user_id)
-    return [_invoice_option(invoice) for invoice in repository.list_all()]
+    invoices = repository.list_all()
+    if limit is not None:
+        invoices = invoices[:limit]
+    return [_invoice_option(invoice) for invoice in invoices]
