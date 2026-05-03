@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.modules.bank_shield.services.statement_parser import ParsedBankTransaction, parse_bank_statement
 from app.models.invoice import Invoice
-from app.repositories.bank_transaction_repository import BankTransactionRepository
+from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.bank_reconciliation import BankReconciliationFilters
 
