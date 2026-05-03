@@ -242,7 +242,6 @@ def export_reconciliation_excel(
             db,
             current_user.id,
             filters=reconciliation_filters,
-            limit=500,
         ),
     )
     filename = f"cfdi_shield_conciliacion_{current_user.id}.xlsx"
