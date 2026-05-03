@@ -10,13 +10,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.modules.bank_shield.adapters.dashboard_adapter import build_reconciliation_dashboard_payload
 from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
 from app.modules.bank_shield.services.reconciliation_service import (
-    get_reconciliation_rows,
-    get_reconciliation_summary,
     process_bank_statement_upload,
 )
 from app.repositories.invoice_repository import InvoiceRepository
@@ -203,6 +202,11 @@ def reconciliation_web(
     )
     query_suffix = _reconciliation_query_suffix(reconciliation_filters)
     invoice_repository = InvoiceRepository(db, user_id=current_user.id)
+    dashboard_payload = build_reconciliation_dashboard_payload(
+        db,
+        current_user.id,
+        filters=reconciliation_filters,
+    )
     return templates.TemplateResponse(
         request,
         "reconciliation.html",
@@ -210,8 +214,8 @@ def reconciliation_web(
             "current_user": current_user,
             "message": message,
             "error": error,
-            "summary": get_reconciliation_summary(db, current_user.id, filters=reconciliation_filters),
-            "rows": get_reconciliation_rows(db, current_user.id, limit=150, filters=reconciliation_filters),
+            "summary": dashboard_payload["summary"],
+            "rows": dashboard_payload["rows"],
             "invoice_options": [_invoice_option(invoice) for invoice in invoice_repository.list_all()],
             "reconciliation_filters": reconciliation_filters,
             "reconciliation_export_url": f"/reconciliation/export-excel{query_suffix}",
