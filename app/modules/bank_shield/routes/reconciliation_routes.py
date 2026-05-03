@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.modules.bank_shield.adapters.dashboard_adapter import build_reconciliation_dashboard_payload
 from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
+from app.modules.bank_shield.adapters.invoice_adapter import build_invoice_options
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
@@ -48,14 +49,6 @@ def _security_event(
         filename or "-",
         detail or "-",
     )
-
-
-def _invoice_option(invoice) -> dict[str, object]:
-    total_mxn = invoice.total_mxn if invoice.total_mxn is not None else (invoice.total_original or invoice.total or 0)
-    return {
-        "id": invoice.id,
-        "label": f"{invoice.uuid} | {invoice.razon_social or '-'} | ${float(total_mxn or 0):,.2f}",
-    }
 
 
 def _build_reconciliation_filters(
@@ -201,7 +194,6 @@ def reconciliation_web(
         busqueda=busqueda,
     )
     query_suffix = _reconciliation_query_suffix(reconciliation_filters)
-    invoice_repository = InvoiceRepository(db, user_id=current_user.id)
     dashboard_payload = build_reconciliation_dashboard_payload(
         db,
         current_user.id,
@@ -216,7 +208,7 @@ def reconciliation_web(
             "error": error,
             "summary": dashboard_payload["summary"],
             "rows": dashboard_payload["rows"],
-            "invoice_options": [_invoice_option(invoice) for invoice in invoice_repository.list_all()],
+            "invoice_options": build_invoice_options(db, current_user.id),
             "reconciliation_filters": reconciliation_filters,
             "reconciliation_export_url": f"/reconciliation/export-excel{query_suffix}",
         },

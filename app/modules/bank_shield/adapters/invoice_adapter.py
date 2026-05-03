@@ -14,7 +14,6 @@ def _invoice_option(invoice) -> dict[str, object]:
         "label": f"{invoice.uuid} | {invoice.razon_social or '-'} | ${float(total_mxn or 0):,.2f}",
     }
 
-
 def build_invoice_options(
     db: Session,
     user_id: int,
