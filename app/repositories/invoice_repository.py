@@ -340,6 +340,12 @@ class InvoiceRepository:
         statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.id == invoice_id)
         return self.db.execute(statement).scalar_one_or_none()
 
+    def list_by_ids(self, invoice_ids: list[int]) -> list[Invoice]:
+        if not invoice_ids:
+            return []
+        statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.id.in_(invoice_ids))
+        return list(self.db.execute(statement).scalars().all())
+
     def get_by_uuid(self, uuid: str) -> Invoice | None:
         normalized_uuid = self._normalize_uuid(uuid)
         statement = self._scope_invoice_statement(select(Invoice)).where(
