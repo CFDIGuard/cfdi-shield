@@ -15,11 +15,12 @@ def build_reconciliation_dashboard_payload(
     db: Session,
     user_id: int,
     filters: BankReconciliationFilters | None = None,
+    limit: int = 150,
 ) -> dict[str, object]:
     """Build the reconciliation payload consumed by the current web dashboard layer."""
 
     summary = get_reconciliation_summary(db, user_id, filters=filters)
-    rows = get_reconciliation_rows(db, user_id, limit=150, filters=filters)
+    rows = get_reconciliation_rows(db, user_id, limit=limit, filters=filters)
     return {
         "summary": summary,
         "rows": rows,
