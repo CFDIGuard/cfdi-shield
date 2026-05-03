@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
@@ -237,11 +238,11 @@ def export_reconciliation_excel(
     reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports()
     workbook_bytes = generate_excel_report(
         reports_bundle,
-        reconciliation_rows=get_reconciliation_rows(
+        reconciliation_rows=build_reconciliation_export_rows(
             db,
             current_user.id,
-            limit=500,
             filters=reconciliation_filters,
+            limit=500,
         ),
     )
     filename = f"cfdi_shield_conciliacion_{current_user.id}.xlsx"
