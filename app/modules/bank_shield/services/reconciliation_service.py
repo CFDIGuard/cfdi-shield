@@ -246,10 +246,21 @@ def get_reconciliation_rows(
 ) -> list[dict[str, object]]:
     bank_repository = BankTransactionRepository(db, user_id=user_id)
     invoice_repository = InvoiceRepository(db, user_id=user_id)
-    invoices_by_id = {invoice.id: invoice for invoice in invoice_repository.list_all()}
+    movements = bank_repository.list_recent(limit=limit, filters=filters)
+    matched_invoice_ids = sorted(
+        {
+            movement.matched_invoice_id
+            for movement in movements
+            if movement.matched_invoice_id is not None
+        }
+    )
+    invoices_by_id = {
+        invoice.id: invoice
+        for invoice in invoice_repository.list_by_ids(matched_invoice_ids)
+    }
 
     rows: list[dict[str, object]] = []
-    for movement in bank_repository.list_recent(limit=limit, filters=filters):
+    for movement in movements:
         matched_invoice = invoices_by_id.get(movement.matched_invoice_id)
         rows.append(
             {
