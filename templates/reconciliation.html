@@ -944,6 +944,12 @@
         const INVOICE_SEARCH_MIN_CHARS = 2;
         const INVOICE_SEARCH_DEBOUNCE_MS = 300;
         const INVOICE_SEARCH_LIMIT = 20;
+        const ATTENTION_THRESHOLDS = {
+            highPendingAmount: 1000,
+            possibleReviewScoreMin: 60,
+            possibleReviewScoreMax: 80,
+            strongPossibleScoreMin: 70,
+        };
         let invoiceSearchRequestCounter = 0;
         const invoiceSearchTimers = new WeakMap();
 
@@ -1214,11 +1220,11 @@
 
         function rowClass(transaction) {
             const score = Number(transaction.match_score || 0);
-            const amount = Number(transaction.monto || 0);
-            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= 70) {
+            const attention = evaluateAttentionPriority(transaction);
+            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= ATTENTION_THRESHOLDS.strongPossibleScoreMin) {
                 return "row-emphasis-possible";
             }
-            if ((transaction.match_status || "").toUpperCase() === "PENDIENTE" && amount >= 1000) {
+            if (attention.level === "HIGH") {
                 return "row-emphasis-pending";
             }
             return "";
@@ -1254,38 +1260,82 @@
             document.getElementById("alert-conciliado-count").textContent = groups.CONCILIADO.length;
         }
 
+        function evaluateAttentionPriority(transaction) {
+            const amount = Number(transaction.monto || 0);
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
+            const score = Number(transaction.match_score || 0);
+
+            if (status === "PENDIENTE" && amount >= ATTENTION_THRESHOLDS.highPendingAmount) {
+                return {
+                    level: "HIGH",
+                    label: "Alta prioridad",
+                    className: "high",
+                    weight: 3,
+                    reasonKey: "high_pending_amount",
+                };
+            }
+            if (
+                status === "POSIBLE"
+                && score >= ATTENTION_THRESHOLDS.possibleReviewScoreMin
+                && score < ATTENTION_THRESHOLDS.possibleReviewScoreMax
+            ) {
+                return {
+                    level: "MEDIUM",
+                    label: "Prioridad media",
+                    className: "medium",
+                    weight: 2,
+                    reasonKey: "possible_review_score",
+                };
+            }
+            if (status === "PENDIENTE") {
+                return {
+                    level: "MEDIUM",
+                    label: "Prioridad media",
+                    className: "medium",
+                    weight: 2,
+                    reasonKey: "pending_without_high_amount",
+                };
+            }
+            return {
+                level: "LOW",
+                label: "Baja prioridad",
+                className: "low",
+                weight: 1,
+                reasonKey: "default",
+            };
+        }
+
         function attentionPriority(transaction) {
+            const priority = evaluateAttentionPriority(transaction);
             const amount = Number(transaction.monto || 0);
             const score = Number(transaction.match_score || 0);
             const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
 
-            if (status === "PENDIENTE" && amount >= 1000) {
-                return { label: "Alta prioridad", className: "high", weight: 1000 + amount };
+            if (priority.reasonKey === "high_pending_amount") {
+                return { ...priority, label: "Alta prioridad", weight: 1000 + amount };
             }
-            if (status === "POSIBLE" && score >= 60 && score < 80) {
-                return { label: "Revision sugerida", className: "medium", weight: 700 + score + amount / 1000 };
+            if (priority.reasonKey === "possible_review_score") {
+                return { ...priority, label: "Revision sugerida", weight: 700 + score + amount / 1000 };
             }
-            if (status === "PENDIENTE") {
-                return { label: "Pendiente", className: "medium", weight: 500 + amount / 100 };
+            if (priority.reasonKey === "pending_without_high_amount") {
+                return { ...priority, label: "Pendiente", weight: 500 + amount / 100 };
             }
             if (status === "POSIBLE") {
-                return { label: "Validar match", className: "low", weight: 300 + score };
+                return { ...priority, label: "Validar match", weight: 300 + score };
             }
-            return { label: "Seguimiento", className: "low", weight: 100 + score };
+            return { ...priority, label: "Seguimiento", weight: 100 + score };
         }
 
         function attentionReason(transaction) {
-            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
-            const score = Number(transaction.match_score || 0);
-            const amount = Number(transaction.monto || 0);
+            const priority = evaluateAttentionPriority(transaction);
 
-            if (status === "PENDIENTE" && amount >= 1000) {
+            if (priority.reasonKey === "high_pending_amount") {
                 return "Movimiento sin sugerencia confiable y con monto relevante. Conviene asignarlo o descartarlo pronto.";
             }
-            if (status === "POSIBLE" && score >= 60 && score < 80) {
+            if (priority.reasonKey === "possible_review_score") {
                 return "Hay una coincidencia utilizable, pero todavia necesita confirmacion operativa antes de cerrarla.";
             }
-            if (status === "PENDIENTE") {
+            if (priority.reasonKey === "pending_without_high_amount") {
                 return "No se encontro una coincidencia suficiente; puede requerir busqueda manual o nueva carga.";
             }
             return "Conviene revisar la sugerencia para confirmar que el cruce sea correcto.";
