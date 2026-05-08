@@ -1373,6 +1373,7 @@
                 return;
             }
             button.innerHTML = button.dataset.originalHtml || button.innerHTML;
+            delete button.dataset.originalHtml;
             button.removeAttribute("data-busy");
             button.disabled = false;
         }
@@ -1504,7 +1505,7 @@
             const uploadForm = event.target.closest(".js-upload-form");
             if (uploadForm) {
                 const uploadButton = uploadForm.querySelector('button[type="submit"]');
-                if (!uploadButton || uploadButton.dataset.busy === "true") {
+                if (uploadButton?.dataset.busy === "true") {
                     event.preventDefault();
                     return;
                 }
@@ -1514,11 +1515,14 @@
 
             const form = event.target.closest(".js-action-form");
             if (!form) return;
-            event.preventDefault();
             const actionButton = form.querySelector('button[type="submit"]');
             if (!actionButton || actionButton.dataset.busy === "true") {
+                if (actionButton?.dataset.busy === "true") {
+                    event.preventDefault();
+                }
                 return;
             }
+            event.preventDefault();
             const busyLabel = actionButton.dataset.busyLabel || (
                 actionButton.classList.contains("btn-confirm")
                     ? "Confirmando..."
