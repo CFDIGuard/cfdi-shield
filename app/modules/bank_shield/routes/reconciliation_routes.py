@@ -12,7 +12,6 @@ from app.core.config import settings
 from app.db.session import get_db
 from app.modules.bank_shield.adapters.dashboard_adapter import build_reconciliation_dashboard_payload
 from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
-from app.modules.bank_shield.adapters.invoice_adapter import build_invoice_options
 from app.modules.bank_shield.adapters.invoice_search_adapter import build_invoice_search_results
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
@@ -233,7 +232,7 @@ def reconciliation_web(
             "error": error,
             "summary": dashboard_payload["summary"],
             "rows": dashboard_payload["rows"],
-            "invoice_options": build_invoice_options(db, current_user.id),
+            "invoice_search_url": "/api/reconciliation/invoices/search",
             "reconciliation_filters": reconciliation_filters,
             "reconciliation_export_url": f"/reconciliation/export-excel{query_suffix}",
         },
