@@ -1460,11 +1460,12 @@
         }
 
         function resetInvoiceSelect(select, placeholder = "Primero busca un CFDI...") {
+            const isDefaultPlaceholder = placeholder === "Primero busca un CFDI...";
             if (!select) return;
             const row = select.closest("tr");
             const transactionId = row?.dataset.rowId;
             const transaction = reconciliationRows.find((item) => String(item.id) === String(transactionId));
-            if (transaction?.matched_invoice_id && placeholder === "Primero busca un CFDI...") {
+            if (transaction?.matched_invoice_id && isDefaultPlaceholder) {
                 select.innerHTML = `
                     <option value="">${escapeHtml(placeholder)}</option>
                     <option value="${escapeHtml(transaction.matched_invoice_id)}" selected>${escapeHtml(selectedInvoiceLabel(transaction))}</option>
