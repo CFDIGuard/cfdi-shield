@@ -945,7 +945,8 @@
         const INVOICE_SEARCH_DEBOUNCE_MS = 300;
         const INVOICE_SEARCH_LIMIT = 20;
         const ATTENTION_THRESHOLDS = {
-            highPendingAmount: 1000,
+            highPendingAmount: 10000,
+            mediumPendingAmount: 5000,
             possibleReviewScoreMin: 60,
             possibleReviewScoreMax: 80,
             strongPossibleScoreMin: 70,
@@ -1270,8 +1271,21 @@
                     level: "HIGH",
                     label: "Alta prioridad",
                     className: "high",
-                    weight: 3,
+                    weight: 1000 + amount,
                     reasonKey: "high_pending_amount",
+                };
+            }
+            if (
+                status === "PENDIENTE"
+                && amount >= ATTENTION_THRESHOLDS.mediumPendingAmount
+                && amount < ATTENTION_THRESHOLDS.highPendingAmount
+            ) {
+                return {
+                    level: "MEDIUM",
+                    label: "Prioridad media",
+                    className: "medium",
+                    weight: 600 + amount / 100,
+                    reasonKey: "pending_medium_amount",
                 };
             }
             if (
@@ -1283,17 +1297,17 @@
                     level: "MEDIUM",
                     label: "Prioridad media",
                     className: "medium",
-                    weight: 2,
+                    weight: 700 + score + amount / 1000,
                     reasonKey: "possible_review_score",
                 };
             }
             if (status === "PENDIENTE") {
                 return {
-                    level: "MEDIUM",
-                    label: "Prioridad media",
-                    className: "medium",
-                    weight: 2,
-                    reasonKey: "pending_without_high_amount",
+                    level: "LOW",
+                    label: "Baja prioridad",
+                    className: "low",
+                    weight: 100 + amount / 100,
+                    reasonKey: "pending_low_amount",
                 };
             }
             return {
@@ -1312,13 +1326,19 @@
             const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
 
             if (priority.reasonKey === "high_pending_amount") {
-                return { ...priority, label: "Alta prioridad", weight: 1000 + amount };
+                return { ...priority, label: "Alta prioridad" };
+            }
+            if (priority.reasonKey === "pending_medium_amount") {
+                return {
+                    ...priority,
+                    label: "Pendiente",
+                };
             }
             if (priority.reasonKey === "possible_review_score") {
-                return { ...priority, label: "Revision sugerida", weight: 700 + score + amount / 1000 };
+                return { ...priority, label: "Revision sugerida" };
             }
-            if (priority.reasonKey === "pending_without_high_amount") {
-                return { ...priority, label: "Pendiente", weight: 500 + amount / 100 };
+            if (priority.reasonKey === "pending_low_amount") {
+                return { ...priority, label: "Seguimiento" };
             }
             if (status === "POSIBLE") {
                 return { ...priority, label: "Validar match", weight: 300 + score };
@@ -1332,10 +1352,13 @@
             if (priority.reasonKey === "high_pending_amount") {
                 return "Movimiento sin sugerencia confiable y con monto relevante. Conviene asignarlo o descartarlo pronto.";
             }
+            if (priority.reasonKey === "pending_medium_amount") {
+                return "Movimiento pendiente con impacto operativo moderado. Conviene revisarlo despues de los casos mas criticos.";
+            }
             if (priority.reasonKey === "possible_review_score") {
                 return "Hay una coincidencia utilizable, pero todavia necesita confirmacion operativa antes de cerrarla.";
             }
-            if (priority.reasonKey === "pending_without_high_amount") {
+            if (priority.reasonKey === "pending_low_amount") {
                 return "No se encontro una coincidencia suficiente; puede requerir busqueda manual o nueva carga.";
             }
             return "Conviene revisar la sugerencia para confirmar que el cruce sea correcto.";
