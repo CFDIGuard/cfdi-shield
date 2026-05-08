@@ -121,6 +121,14 @@
             color: var(--ink);
         }
 
+        .button-link[data-busy="true"],
+        .ghost-button[data-busy="true"],
+        .inline-actions button[data-busy="true"] {
+            opacity: 0.7;
+            cursor: wait;
+            pointer-events: none;
+        }
+
         .user-pill {
             color: var(--muted);
             font-size: 13px;
@@ -350,6 +358,7 @@
             overflow-x: auto;
             max-height: 520px;
             overflow-y: auto;
+            scrollbar-gutter: stable both-edges;
         }
 
         table {
@@ -359,7 +368,7 @@
         }
 
         th, td {
-            padding: 10px 12px;
+            padding: 8px 10px;
             border-bottom: 1px solid var(--line);
             text-align: left;
             vertical-align: middle;
@@ -368,13 +377,14 @@
 
         th {
             color: var(--muted);
-            background: #fbfdff;
+            background: rgba(251, 253, 255, 0.98);
             font-size: 12px;
             font-weight: 900;
             text-transform: uppercase;
             position: sticky;
             top: 0;
-            z-index: 2;
+            z-index: 3;
+            box-shadow: inset 0 -1px 0 var(--line), 0 8px 18px rgba(15, 23, 42, 0.04);
         }
 
         .tag {
@@ -396,41 +406,51 @@
 
         .inline-actions {
             display: grid;
-            gap: 8px;
+            gap: 6px;
         }
 
         .inline-actions form,
         .inline-actions .assign-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: minmax(210px, 1.1fr) minmax(210px, 1fr) auto;
+            gap: 6px;
             align-items: center;
         }
 
+        .inline-actions form {
+            grid-template-columns: auto;
+            justify-content: start;
+        }
+
         .inline-actions select {
-            min-height: 34px;
-            min-width: 280px;
-            padding: 6px 8px;
+            min-height: 32px;
+            min-width: 0;
+            width: 100%;
+            padding: 5px 8px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-strong);
+            font-size: 12px;
         }
 
         .inline-actions .invoice-search {
-            min-height: 34px;
-            min-width: 280px;
-            padding: 6px 8px;
+            min-height: 32px;
+            min-width: 0;
+            width: 100%;
+            padding: 5px 8px;
             border: 1px solid var(--line);
             border-radius: 8px;
             background: var(--surface-strong);
             color: var(--ink);
+            font-size: 12px;
         }
 
         .invoice-search-status {
-            min-height: 18px;
+            min-height: 16px;
             color: var(--muted);
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
+            line-height: 1.35;
         }
 
         .invoice-search-status.warning {
@@ -442,13 +462,15 @@
         }
 
         .inline-actions button {
-            min-height: 34px;
-            padding: 6px 10px;
+            min-height: 32px;
+            padding: 5px 10px;
             border-radius: 8px;
             border: 0;
             font: inherit;
+            font-size: 12px;
             font-weight: 800;
             cursor: pointer;
+            white-space: nowrap;
         }
 
         .btn-confirm { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
@@ -695,6 +717,17 @@
             .quick-filters-grid {
                 grid-template-columns: 1fr;
             }
+
+            .inline-actions .assign-row {
+                grid-template-columns: 1fr;
+                align-items: stretch;
+            }
+
+            .inline-actions button,
+            .inline-actions .invoice-search,
+            .inline-actions select {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -725,7 +758,7 @@
             </div>
             <div class="toolbar">
                 <a class="ghost-button" href="/dashboard-web">Volver al dashboard</a>
-                <a class="ghost-button" href="{{ reconciliation_export_url }}">Exportar Excel</a>
+                <a class="ghost-button js-export-link" href="{{ reconciliation_export_url }}">Exportar Excel</a>
             </div>
         </section>
 
@@ -825,7 +858,7 @@
                 </div>
             </div>
             <div class="panel-body">
-                <form class="upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
+                <form class="upload-form js-upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="file" name="file" accept=".csv,.xlsx" required>
                     <button class="button-link" type="submit">Procesar estado bancario</button>
@@ -1326,6 +1359,25 @@
             renderReconciliationView();
         }
 
+        function setBusyState(button, isBusy, busyLabel = "") {
+            if (!button) return;
+            if (!button.dataset.originalHtml) {
+                button.dataset.originalHtml = button.innerHTML;
+            }
+            if (isBusy) {
+                if (busyLabel) {
+                    button.innerHTML = escapeHtml(busyLabel);
+                }
+                button.disabled = true;
+                button.dataset.busy = "true";
+                return;
+            }
+            button.innerHTML = button.dataset.originalHtml || button.innerHTML;
+            delete button.dataset.originalHtml;
+            button.removeAttribute("data-busy");
+            button.disabled = false;
+        }
+
         function resetInvoiceSelect(select, placeholder = "Selecciona un CFDI...") {
             if (!select) return;
             const row = select.closest("tr");
@@ -1450,19 +1502,61 @@
         }
 
         document.addEventListener("submit", async (event) => {
+            const uploadForm = event.target.closest(".js-upload-form");
+            if (uploadForm) {
+                const uploadButton = uploadForm.querySelector('button[type="submit"]');
+                if (uploadButton?.dataset.busy === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                setBusyState(uploadButton, true, "Procesando...");
+                return;
+            }
+
             const form = event.target.closest(".js-action-form");
             if (!form) return;
+            const actionButton = form.querySelector('button[type="submit"]');
+            if (!actionButton || actionButton.dataset.busy === "true") {
+                if (actionButton?.dataset.busy === "true") {
+                    event.preventDefault();
+                }
+                return;
+            }
             event.preventDefault();
+            const busyLabel = actionButton.dataset.busyLabel || (
+                actionButton.classList.contains("btn-confirm")
+                    ? "Confirmando..."
+                    : "Rechazando..."
+            );
             try {
+                setBusyState(actionButton, true, busyLabel);
                 await postAction(form.action, new FormData(form));
             } catch (error) {
                 alert(error.message);
+            } finally {
+                setBusyState(actionButton, false);
             }
         });
 
         document.addEventListener("click", async (event) => {
+            const exportLink = event.target.closest(".js-export-link");
+            if (exportLink) {
+                if (exportLink.dataset.busy === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                setBusyState(exportLink, true, "Exportando...");
+                window.setTimeout(() => {
+                    setBusyState(exportLink, false);
+                }, 2000);
+                return;
+            }
+
             const button = event.target.closest(".js-assign-button");
             if (!button) return;
+            if (button.dataset.busy === "true") {
+                return;
+            }
             const row = button.closest("tr");
             const select = row.querySelector(".invoice-select");
             if (!select.value) {
@@ -1473,9 +1567,15 @@
             const formData = new FormData();
             formData.append("csrf_token", csrfInput ? csrfInput.value : "");
             try {
+                setBusyState(button, true, "Asignando...");
                 await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`, formData);
             } catch (error) {
                 alert(error.message);
+            } finally {
+                if (button.isConnected) {
+                    setBusyState(button, false);
+                    syncAssignButtonState(row);
+                }
             }
         });
 
