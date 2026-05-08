@@ -87,6 +87,10 @@ class InvoiceRepository:
     def _normalize_uuid(value: str | None) -> str:
         return str(value or "").strip().upper()
 
+    @staticmethod
+    def _escape_like_term(value: str) -> str:
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
     def _invoice_reference_total(self, invoice: Invoice) -> float:
         if invoice.total_mxn is not None:
             return float(invoice.total_mxn or 0)
@@ -344,6 +348,25 @@ class InvoiceRepository:
         if not invoice_ids:
             return []
         statement = self._scope_invoice_statement(select(Invoice)).where(Invoice.id.in_(invoice_ids))
+        return list(self.db.execute(statement).scalars().all())
+
+    def search_for_reconciliation(self, query: str, limit: int = 20) -> list[Invoice]:
+        normalized_query = str(query or "").strip().upper()
+        if len(normalized_query) < 2:
+            return []
+
+        safe_limit = max(1, min(int(limit or 20), 50))
+        escaped = self._escape_like_term(normalized_query)
+        needle = f"%{escaped}%"
+
+        statement = self._scope_invoice_statement(select(Invoice))
+        statement = self._apply_visibility(statement)
+        statement = statement.where(
+            (func.upper(func.coalesce(Invoice.uuid, "")).like(needle, escape="\\"))
+            | (func.upper(func.coalesce(cast(Invoice.razon_social, String), "")).like(needle, escape="\\"))
+            | (func.upper(func.coalesce(Invoice.rfc_emisor, "")).like(needle, escape="\\"))
+        )
+        statement = statement.order_by(Invoice.created_at.desc(), Invoice.id.desc()).limit(safe_limit)
         return list(self.db.execute(statement).scalars().all())
 
     def get_by_uuid(self, uuid: str) -> Invoice | None:
