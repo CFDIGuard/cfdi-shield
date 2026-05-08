@@ -17,6 +17,7 @@ from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
 from app.modules.bank_shield.services.reconciliation_service import (
+    invoice_unavailable_for_ui,
     process_bank_statement_upload,
 )
 from app.repositories.invoice_repository import InvoiceRepository
@@ -76,17 +77,25 @@ def _transaction_payload(transaction: BankTransaction, invoice_repository: Invoi
         if transaction.matched_invoice_id is not None
         else None
     )
+    matched_invoice_uuid = matched_invoice.uuid if matched_invoice is not None else None
+    matched_invoice_provider = matched_invoice.razon_social if matched_invoice is not None else None
+    invoice_unavailable = invoice_unavailable_for_ui(
+        transaction.match_reason,
+        matched_invoice_id=transaction.matched_invoice_id,
+        matched_invoice_uuid=matched_invoice_uuid,
+    )
     return {
         "id": transaction.id,
         "descripcion": transaction.descripcion,
         "referencia": transaction.referencia,
-        "match_status": transaction.match_status,
+        "match_status": "PENDIENTE" if invoice_unavailable else transaction.match_status,
         "match_score": float(transaction.match_score or 0),
         "match_reason": transaction.match_reason,
         "origen": transaction.origen,
         "matched_invoice_id": transaction.matched_invoice_id,
-        "matched_invoice_uuid": matched_invoice.uuid if matched_invoice is not None else None,
-        "matched_invoice_provider": matched_invoice.razon_social if matched_invoice is not None else None,
+        "matched_invoice_uuid": matched_invoice_uuid,
+        "matched_invoice_provider": matched_invoice_provider,
+        "invoice_unavailable": invoice_unavailable,
     }
 
 
