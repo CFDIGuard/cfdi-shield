@@ -121,6 +121,14 @@
             color: var(--ink);
         }
 
+        .button-link[data-busy="true"],
+        .ghost-button[data-busy="true"],
+        .inline-actions button[data-busy="true"] {
+            opacity: 0.7;
+            cursor: wait;
+            pointer-events: none;
+        }
+
         .user-pill {
             color: var(--muted);
             font-size: 13px;
@@ -750,7 +758,7 @@
             </div>
             <div class="toolbar">
                 <a class="ghost-button" href="/dashboard-web">Volver al dashboard</a>
-                <a class="ghost-button" href="{{ reconciliation_export_url }}">Exportar Excel</a>
+                <a class="ghost-button js-export-link" href="{{ reconciliation_export_url }}">Exportar Excel</a>
             </div>
         </section>
 
@@ -850,7 +858,7 @@
                 </div>
             </div>
             <div class="panel-body">
-                <form class="upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
+                <form class="upload-form js-upload-form" action="/reconciliation/upload" method="post" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="file" name="file" accept=".csv,.xlsx" required>
                     <button class="button-link" type="submit">Procesar estado bancario</button>
@@ -1351,6 +1359,25 @@
             renderReconciliationView();
         }
 
+        function setBusyState(button, isBusy, busyLabel = "") {
+            if (!button) return;
+            if (!button.dataset.originalLabel) {
+                button.dataset.originalLabel = button.textContent.trim();
+            }
+            if (isBusy) {
+                if (busyLabel) {
+                    button.textContent = busyLabel;
+                }
+                button.disabled = true;
+                button.dataset.busy = "true";
+                return;
+            }
+            button.textContent = button.dataset.originalLabel || button.textContent;
+            button.dataset.busy = "false";
+            button.removeAttribute("data-busy");
+            button.disabled = false;
+        }
+
         function resetInvoiceSelect(select, placeholder = "Selecciona un CFDI...") {
             if (!select) return;
             const row = select.closest("tr");
@@ -1475,19 +1502,56 @@
         }
 
         document.addEventListener("submit", async (event) => {
+            const uploadForm = event.target.closest(".js-upload-form");
+            if (uploadForm) {
+                const uploadButton = uploadForm.querySelector('button[type="submit"]');
+                if (!uploadButton || uploadButton.dataset.busy === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                setBusyState(uploadButton, true, "Procesando...");
+                return;
+            }
+
             const form = event.target.closest(".js-action-form");
             if (!form) return;
             event.preventDefault();
+            const actionButton = form.querySelector('button[type="submit"]');
+            if (!actionButton || actionButton.dataset.busy === "true") {
+                return;
+            }
+            const busyLabel = actionButton.classList.contains("btn-confirm")
+                ? "Confirmando..."
+                : "Rechazando...";
             try {
+                setBusyState(actionButton, true, busyLabel);
                 await postAction(form.action, new FormData(form));
             } catch (error) {
                 alert(error.message);
+            } finally {
+                setBusyState(actionButton, false);
             }
         });
 
         document.addEventListener("click", async (event) => {
+            const exportLink = event.target.closest(".js-export-link");
+            if (exportLink) {
+                if (exportLink.dataset.busy === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                setBusyState(exportLink, true, "Exportando...");
+                window.setTimeout(() => {
+                    setBusyState(exportLink, false);
+                }, 2000);
+                return;
+            }
+
             const button = event.target.closest(".js-assign-button");
             if (!button) return;
+            if (button.dataset.busy === "true") {
+                return;
+            }
             const row = button.closest("tr");
             const select = row.querySelector(".invoice-select");
             if (!select.value) {
@@ -1498,9 +1562,13 @@
             const formData = new FormData();
             formData.append("csrf_token", csrfInput ? csrfInput.value : "");
             try {
+                setBusyState(button, true, "Asignando...");
                 await postAction(`/reconciliation/assign/${button.dataset.transactionId}?invoice_id=${encodeURIComponent(select.value)}`, formData);
             } catch (error) {
                 alert(error.message);
+            } finally {
+                setBusyState(button, false);
+                syncAssignButtonState(row);
             }
         });
 
