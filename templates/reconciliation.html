@@ -453,6 +453,13 @@
             line-height: 1.35;
         }
 
+        .invoice-search-help {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+
         .invoice-search-status.warning {
             color: var(--warning);
         }
@@ -1110,7 +1117,7 @@
         }
 
         function invoiceSelectHtml(transaction) {
-            const options = ['<option value="">Selecciona un CFDI...</option>'];
+            const options = ['<option value="">Primero busca un CFDI...</option>'];
             if (transaction.matched_invoice_id) {
                 options.push(
                     `<option value="${escapeHtml(transaction.matched_invoice_id)}" selected>${escapeHtml(selectedInvoiceLabel(transaction))}</option>`
@@ -1146,6 +1153,7 @@
                         </select>
                         <button class="btn-assign js-assign-button" type="button" data-transaction-id="${transaction.id}" ${transaction.matched_invoice_id ? "" : "disabled"}>Asignar CFDI</button>
                     </div>
+                    <div class="invoice-search-help">Busca por UUID, proveedor o RFC para cargar CFDI disponibles.</div>
                     <div class="invoice-search-status muted" aria-live="polite"></div>
                     <form class="js-action-form" action="/reconciliation/reject/${transaction.id}" method="post">
                         <input type="hidden" name="csrf_token" value="${escapeHtml(csrfToken)}">
@@ -1451,12 +1459,13 @@
             button.disabled = false;
         }
 
-        function resetInvoiceSelect(select, placeholder = "Selecciona un CFDI...") {
+        function resetInvoiceSelect(select, placeholder = "Primero busca un CFDI...") {
+            const isDefaultPlaceholder = placeholder === "Primero busca un CFDI...";
             if (!select) return;
             const row = select.closest("tr");
             const transactionId = row?.dataset.rowId;
             const transaction = reconciliationRows.find((item) => String(item.id) === String(transactionId));
-            if (transaction?.matched_invoice_id && placeholder === "Selecciona un CFDI...") {
+            if (transaction?.matched_invoice_id && isDefaultPlaceholder) {
                 select.innerHTML = `
                     <option value="">${escapeHtml(placeholder)}</option>
                     <option value="${escapeHtml(transaction.matched_invoice_id)}" selected>${escapeHtml(selectedInvoiceLabel(transaction))}</option>
@@ -1563,7 +1572,11 @@
                 input.dataset.lastQuery = "";
                 input.dataset.requestId = "";
                 resetInvoiceSelect(select);
-                setInvoiceSearchStatus(row, "");
+                if (query.length > 0) {
+                    setInvoiceSearchStatus(row, `Escribe al menos ${INVOICE_SEARCH_MIN_CHARS} caracteres para buscar CFDI.`);
+                } else {
+                    setInvoiceSearchStatus(row, "");
+                }
                 syncAssignButtonState(row);
                 return;
             }
