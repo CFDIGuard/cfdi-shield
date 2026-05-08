@@ -948,6 +948,7 @@
             highPendingAmount: 1000,
             possibleReviewScoreMin: 60,
             possibleReviewScoreMax: 80,
+            strongPossibleScoreMin: 70,
         };
         let invoiceSearchRequestCounter = 0;
         const invoiceSearchTimers = new WeakMap();
@@ -1220,7 +1221,7 @@
         function rowClass(transaction) {
             const score = Number(transaction.match_score || 0);
             const attention = evaluateAttentionPriority(transaction);
-            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= 70) {
+            if ((transaction.match_status || "").toUpperCase() === "POSIBLE" && score >= ATTENTION_THRESHOLDS.strongPossibleScoreMin) {
                 return "row-emphasis-possible";
             }
             if (attention.level === "HIGH") {
@@ -1261,7 +1262,7 @@
 
         function evaluateAttentionPriority(transaction) {
             const amount = Number(transaction.monto || 0);
-            const status = String(transaction.match_status || "").toUpperCase();
+            const status = String(transaction.match_status || "PENDIENTE").toUpperCase();
             const score = Number(transaction.match_score || 0);
 
             if (status === "PENDIENTE" && amount >= ATTENTION_THRESHOLDS.highPendingAmount) {
