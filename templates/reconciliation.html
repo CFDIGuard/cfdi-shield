@@ -813,7 +813,7 @@
             <article class="metric">
                 <div class="metric-label">Total visible</div>
                 <div class="metric-value" id="summary-total">{{ summary.total_movimientos }}</div>
-                <div class="metric-meta" id="summary-total-amount">$0.00 en movimientos cargados</div>
+                <div class="metric-meta"><span id="summary-total-amount">$0.00</span> en movimientos visibles</div>
             </article>
         </section>
 
@@ -976,6 +976,9 @@
         }
 
         function suggestedHtml(transaction) {
+            if (transaction.invoice_unavailable === true) {
+                return '<span class="muted">CFDI no disponible</span>';
+            }
             if (!transaction.matched_invoice_uuid) {
                 return '<span class="muted">Sin sugerencia</span>';
             }
@@ -983,6 +986,9 @@
         }
 
         function factorBadges(transaction) {
+            if (transaction.invoice_unavailable === true) {
+                return '<span class="factor-chip warning">CFDI no disponible</span>';
+            }
             const reason = String(transaction.match_reason || "");
             const reasons = reason
                 .split(";")
@@ -1033,6 +1039,17 @@
         }
 
         function scoreCell(transaction) {
+            if (transaction.invoice_unavailable === true) {
+                return `
+                    <div class="score-stack">
+                        <div class="score-top">
+                            <span class="score-level low">CFDI no disponible</span>
+                            <span class="score-percent">N/A</span>
+                        </div>
+                        <div class="match-factors">${factorBadges(transaction)}</div>
+                    </div>
+                `;
+            }
             const numericScore = Number(transaction.match_score || 0);
             const level = scoreLevel(numericScore);
             return `
@@ -1071,6 +1088,13 @@
             if (filters.busqueda) params.set("busqueda", filters.busqueda);
             const suffix = params.toString();
             return suffix ? `${url}?${suffix}` : url;
+        }
+
+        function matchReasonText(transaction) {
+            if (transaction.invoice_unavailable === true) {
+                return "La factura sugerida ya no esta disponible. Busca y asigna un CFDI vigente.";
+            }
+            return transaction.match_reason || "-";
         }
 
         function passesQuickFilters(transaction) {
@@ -1181,7 +1205,7 @@
                     <td>${statusBadge(row.match_status)}</td>
                     <td>${suggestedHtml(row)}</td>
                     <td>${scoreCell(row)}</td>
-                    <td>${escapeHtml(row.match_reason || "-")}</td>
+                    <td>${escapeHtml(matchReasonText(row))}</td>
                     <td>${actionHtml(row)}</td>
                 </tr>
             `).join("");
@@ -1251,6 +1275,7 @@
                 POSIBLE: groups.POSIBLE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
                 PENDIENTE: groups.PENDIENTE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
             };
+            const totalVisibleAmount = rows.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0);
 
             document.getElementById("summary-conciliado-amount").textContent = formatMoney(totals.CONCILIADO);
             document.getElementById("summary-conciliado-count").textContent = groups.CONCILIADO.length;
@@ -1259,7 +1284,7 @@
             document.getElementById("summary-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
             document.getElementById("summary-pendiente-count").textContent = groups.PENDIENTE.length;
             document.getElementById("summary-total").textContent = rows.length;
-            document.getElementById("summary-total-amount").textContent = `${formatMoney(totals.CONCILIADO + totals.POSIBLE + totals.PENDIENTE)} en movimientos visibles`;
+            document.getElementById("summary-total-amount").textContent = formatMoney(totalVisibleAmount);
 
             const weakMatches = groups.POSIBLE.filter((row) => Number(row.match_score || 0) < 70);
             document.getElementById("alert-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
@@ -1355,6 +1380,9 @@
         }
 
         function attentionReason(transaction) {
+            if (transaction.invoice_unavailable === true) {
+                return "La factura sugerida ya no esta disponible. Busca y asigna un CFDI vigente.";
+            }
             const priority = evaluateAttentionPriority(transaction);
 
             if (priority.reasonKey === "high_pending_amount") {
