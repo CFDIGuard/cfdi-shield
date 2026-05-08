@@ -78,7 +78,7 @@ def invoice_unavailable_for_ui(
         or "FACTURA RELACIONADA NO DISPONIBLE" in normalized_reason
         or "FACTURA NO DISPONIBLE" in normalized_reason
     )
-    return indicates_unavailable and (matched_invoice_id is None or not matched_invoice_uuid)
+    return (indicates_unavailable or matched_invoice_id is not None) and not matched_invoice_uuid
 
 
 def _extract_date(value: str | None) -> datetime | None:
