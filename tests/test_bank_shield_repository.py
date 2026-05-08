@@ -210,3 +210,33 @@ def test_bank_transaction_summary_counts_statuses(tmp_path):
             "posibles": 1,
             "pendientes": 1,
         }
+
+
+def test_invoice_search_for_reconciliation_is_scoped_and_escapes_like(tmp_path):
+    _, session_local = _make_db(tmp_path)
+
+    with session_local() as db:
+        user_repo = UserRepository(db)
+        user_a = user_repo.create("search-a@example.com", hash_password("password123"))
+        user_b = user_repo.create("search-b@example.com", hash_password("password123"))
+
+        repo_a = InvoiceRepository(db, user_id=user_a.id)
+        repo_b = InvoiceRepository(db, user_id=user_b.id)
+
+        invoice_a = _make_invoice(user_a.id, "UUID-ALFA-001", 100.0, "Proveedor 100% Seguro")
+        invoice_a.rfc_emisor = "AAA010101AAA"
+        repo_a.create(invoice_a)
+
+        invoice_b = _make_invoice(user_b.id, "UUID-BETA-001", 200.0, "Proveedor Externo")
+        invoice_b.rfc_emisor = "RFC_BETA_001"
+        repo_b.create(invoice_b)
+
+        by_provider = repo_a.search_for_reconciliation("100%", limit=20)
+        by_rfc = repo_b.search_for_reconciliation("RFC_BETA", limit=20)
+        too_short = repo_a.search_for_reconciliation("A", limit=20)
+
+        assert len(by_provider) == 1
+        assert by_provider[0].razon_social == "Proveedor 100% Seguro"
+        assert len(by_rfc) == 1
+        assert by_rfc[0].rfc_emisor == "RFC_BETA_001"
+        assert too_short == []

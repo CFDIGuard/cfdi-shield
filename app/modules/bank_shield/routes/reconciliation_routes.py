@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.modules.bank_shield.adapters.dashboard_adapter import build_reconciliation_dashboard_payload
 from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
 from app.modules.bank_shield.adapters.invoice_adapter import build_invoice_options
+from app.modules.bank_shield.adapters.invoice_search_adapter import build_invoice_search_results
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
@@ -172,6 +173,30 @@ def upload_bank_statement_web(
         ),
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@router.get("/api/reconciliation/invoices/search", response_model=None)
+def search_reconciliation_invoices(
+    q: str = "",
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+
+    query = str(q or "").strip()
+    if len(query) < 2:
+        return JSONResponse(status_code=400, content={"detail": "Debes capturar al menos 2 caracteres"})
+
+    safe_limit = max(1, min(int(limit or 20), 50))
+    items = build_invoice_search_results(
+        db,
+        current_user.id,
+        query=query,
+        limit=safe_limit,
+    )
+    return {"items": items}
 
 
 @router.get("/reconciliation", response_class=HTMLResponse, response_model=None)
