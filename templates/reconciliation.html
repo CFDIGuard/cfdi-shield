@@ -1361,19 +1361,18 @@
 
         function setBusyState(button, isBusy, busyLabel = "") {
             if (!button) return;
-            if (!button.dataset.originalLabel) {
-                button.dataset.originalLabel = button.textContent.trim();
+            if (!button.dataset.originalHtml) {
+                button.dataset.originalHtml = button.innerHTML;
             }
             if (isBusy) {
                 if (busyLabel) {
-                    button.textContent = busyLabel;
+                    button.innerHTML = escapeHtml(busyLabel);
                 }
                 button.disabled = true;
                 button.dataset.busy = "true";
                 return;
             }
-            button.textContent = button.dataset.originalLabel || button.textContent;
-            button.dataset.busy = "false";
+            button.innerHTML = button.dataset.originalHtml || button.innerHTML;
             button.removeAttribute("data-busy");
             button.disabled = false;
         }
@@ -1520,9 +1519,11 @@
             if (!actionButton || actionButton.dataset.busy === "true") {
                 return;
             }
-            const busyLabel = actionButton.classList.contains("btn-confirm")
-                ? "Confirmando..."
-                : "Rechazando...";
+            const busyLabel = actionButton.dataset.busyLabel || (
+                actionButton.classList.contains("btn-confirm")
+                    ? "Confirmando..."
+                    : "Rechazando..."
+            );
             try {
                 setBusyState(actionButton, true, busyLabel);
                 await postAction(form.action, new FormData(form));
@@ -1567,8 +1568,10 @@
             } catch (error) {
                 alert(error.message);
             } finally {
-                setBusyState(button, false);
-                syncAssignButtonState(row);
+                if (button.isConnected) {
+                    setBusyState(button, false);
+                    syncAssignButtonState(row);
+                }
             }
         });
 
