@@ -66,6 +66,21 @@ def _invoice_total_mxn(invoice: Invoice) -> float | None:
     return None
 
 
+def invoice_unavailable_for_ui(
+    match_reason: str | None,
+    *,
+    matched_invoice_id: int | None,
+    matched_invoice_uuid: str | None,
+) -> bool:
+    normalized_reason = _normalized_text(match_reason)
+    indicates_unavailable = (
+        "FACTURA RELACIONADA ELIMINADA" in normalized_reason
+        or "FACTURA RELACIONADA NO DISPONIBLE" in normalized_reason
+        or "FACTURA NO DISPONIBLE" in normalized_reason
+    )
+    return (indicates_unavailable or matched_invoice_id is not None) and not matched_invoice_uuid
+
+
 def _extract_date(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -262,6 +277,13 @@ def get_reconciliation_rows(
     rows: list[dict[str, object]] = []
     for movement in movements:
         matched_invoice = invoices_by_id.get(movement.matched_invoice_id)
+        matched_invoice_uuid = matched_invoice.uuid if matched_invoice is not None else None
+        matched_invoice_provider = matched_invoice.razon_social if matched_invoice is not None else None
+        invoice_unavailable = invoice_unavailable_for_ui(
+            movement.match_reason,
+            matched_invoice_id=movement.matched_invoice_id,
+            matched_invoice_uuid=matched_invoice_uuid,
+        )
         rows.append(
             {
                 "id": movement.id,
@@ -275,12 +297,13 @@ def get_reconciliation_rows(
                 "moneda": movement.moneda,
                 "origen": movement.origen,
                 "matched_invoice_id": movement.matched_invoice_id,
-                "match_status": movement.match_status,
+                "match_status": "PENDIENTE" if invoice_unavailable else movement.match_status,
                 "match_score": float(movement.match_score or 0),
                 "match_reason": movement.match_reason,
-                "matched_invoice_uuid": matched_invoice.uuid if matched_invoice is not None else None,
-                "matched_invoice_provider": matched_invoice.razon_social if matched_invoice is not None else None,
+                "matched_invoice_uuid": matched_invoice_uuid,
+                "matched_invoice_provider": matched_invoice_provider,
                 "matched_invoice_total_mxn": _invoice_total_mxn(matched_invoice) if matched_invoice is not None else None,
+                "invoice_unavailable": invoice_unavailable,
             }
         )
     return rows
