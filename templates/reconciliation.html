@@ -1311,6 +1311,16 @@
 
         function resetInvoiceSelect(select, placeholder = "Selecciona un CFDI...") {
             if (!select) return;
+            const row = select.closest("tr");
+            const transactionId = row?.dataset.rowId;
+            const transaction = reconciliationRows.find((item) => String(item.id) === String(transactionId));
+            if (transaction?.matched_invoice_id && placeholder === "Selecciona un CFDI...") {
+                select.innerHTML = `
+                    <option value="">${escapeHtml(placeholder)}</option>
+                    <option value="${escapeHtml(transaction.matched_invoice_id)}" selected>${escapeHtml(selectedInvoiceLabel(transaction))}</option>
+                `;
+                return;
+            }
             select.innerHTML = `<option value="">${escapeHtml(placeholder)}</option>`;
         }
 
