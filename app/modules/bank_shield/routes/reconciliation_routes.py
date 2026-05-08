@@ -10,12 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.modules.bank_shield.adapters.dashboard_adapter import build_reconciliation_dashboard_payload
+from app.modules.bank_shield.adapters.excel_adapter import build_reconciliation_export_rows
+from app.modules.bank_shield.adapters.invoice_search_adapter import build_invoice_search_results
 from app.models.bank_transaction import BankTransaction
 from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
 from app.modules.bank_shield.services.reconciliation_service import (
-    get_reconciliation_rows,
-    get_reconciliation_summary,
     process_bank_statement_upload,
 )
 from app.repositories.invoice_repository import InvoiceRepository
@@ -48,14 +49,6 @@ def _security_event(
         filename or "-",
         detail or "-",
     )
-
-
-def _invoice_option(invoice) -> dict[str, object]:
-    total_mxn = invoice.total_mxn if invoice.total_mxn is not None else (invoice.total_original or invoice.total or 0)
-    return {
-        "id": invoice.id,
-        "label": f"{invoice.uuid} | {invoice.razon_social or '-'} | ${float(total_mxn or 0):,.2f}",
-    }
 
 
 def _build_reconciliation_filters(
@@ -181,6 +174,30 @@ def upload_bank_statement_web(
     )
 
 
+@router.get("/api/reconciliation/invoices/search", response_model=None)
+def search_reconciliation_invoices(
+    q: str = "",
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user),
+):
+    if current_user is None:
+        return JSONResponse(status_code=401, content={"detail": "Not authenticated"})
+
+    query = str(q or "").strip()
+    if len(query) < 2:
+        return JSONResponse(status_code=400, content={"detail": "Debes capturar al menos 2 caracteres"})
+
+    safe_limit = max(1, min(int(limit or 20), 50))
+    items = build_invoice_search_results(
+        db,
+        current_user.id,
+        query=query,
+        limit=safe_limit,
+    )
+    return {"items": items}
+
+
 @router.get("/reconciliation", response_class=HTMLResponse, response_model=None)
 def reconciliation_web(
     request: Request,
@@ -201,7 +218,11 @@ def reconciliation_web(
         busqueda=busqueda,
     )
     query_suffix = _reconciliation_query_suffix(reconciliation_filters)
-    invoice_repository = InvoiceRepository(db, user_id=current_user.id)
+    dashboard_payload = build_reconciliation_dashboard_payload(
+        db,
+        current_user.id,
+        filters=reconciliation_filters,
+    )
     return templates.TemplateResponse(
         request,
         "reconciliation.html",
@@ -209,9 +230,9 @@ def reconciliation_web(
             "current_user": current_user,
             "message": message,
             "error": error,
-            "summary": get_reconciliation_summary(db, current_user.id, filters=reconciliation_filters),
-            "rows": get_reconciliation_rows(db, current_user.id, limit=150, filters=reconciliation_filters),
-            "invoice_options": [_invoice_option(invoice) for invoice in invoice_repository.list_all()],
+            "summary": dashboard_payload["summary"],
+            "rows": dashboard_payload["rows"],
+            "invoice_search_url": "/api/reconciliation/invoices/search",
             "reconciliation_filters": reconciliation_filters,
             "reconciliation_export_url": f"/reconciliation/export-excel{query_suffix}",
         },
@@ -237,10 +258,9 @@ def export_reconciliation_excel(
     reports_bundle = InvoiceRepository(db, user_id=current_user.id).reports()
     workbook_bytes = generate_excel_report(
         reports_bundle,
-        reconciliation_rows=get_reconciliation_rows(
+        reconciliation_rows=build_reconciliation_export_rows(
             db,
             current_user.id,
-            limit=500,
             filters=reconciliation_filters,
         ),
     )

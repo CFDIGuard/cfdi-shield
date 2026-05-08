@@ -104,11 +104,20 @@ class BankTransactionRepository:
         return list(self.db.execute(statement).scalars().all())
 
     def summary(self, filters: BankReconciliationFilters | None = None) -> dict[str, int]:
-        rows = self.list_all(filters=filters)
-        counts: dict[str, int] = {}
-        for row in rows:
-            status = str(row.match_status or "PENDIENTE").upper()
-            counts[status] = counts.get(status, 0) + 1
+        status_expr = func.upper(func.coalesce(BankTransaction.match_status, "PENDIENTE"))
+        statement = self._scope_statement(
+            select(
+                status_expr.label("match_status"),
+                func.count(BankTransaction.id).label("total"),
+            )
+        )
+        statement = self._apply_filters(statement, filters)
+        statement = statement.group_by(status_expr)
+
+        counts = {
+            str(match_status or "PENDIENTE").upper(): int(total or 0)
+            for match_status, total in self.db.execute(statement).all()
+        }
         conciliados = counts.get("CONCILIADO", 0)
         posibles = counts.get("POSIBLE", 0)
         pendientes = counts.get("PENDIENTE", 0)
