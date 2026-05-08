@@ -32,6 +32,10 @@ from app.web_deps import get_current_user
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+MIN_LIMIT = 1
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 50
+
 
 def _security_event(
     event: str,
@@ -178,7 +182,7 @@ def upload_bank_statement_web(
 @router.get("/api/reconciliation/invoices/search", response_model=None)
 def search_reconciliation_invoices(
     q: str = "",
-    limit: int = 20,
+    limit: int = DEFAULT_LIMIT,
     db: Session = Depends(get_db),
     current_user: User | None = Depends(get_current_user),
 ):
@@ -189,7 +193,7 @@ def search_reconciliation_invoices(
     if len(query) < 2:
         return JSONResponse(status_code=400, content={"detail": "Debes capturar al menos 2 caracteres"})
 
-    safe_limit = max(1, min(int(limit or 20), 50))
+    safe_limit = max(MIN_LIMIT, min(int(limit or DEFAULT_LIMIT), MAX_LIMIT))
     items = build_invoice_search_results(
         db,
         current_user.id,
