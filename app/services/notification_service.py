@@ -7,6 +7,8 @@ from email.message import EmailMessage
 from typing import Any
 from urllib.parse import quote
 
+import requests
+
 from app.core.config import settings
 
 
@@ -55,6 +57,34 @@ def smtp_ready_for_delivery() -> bool:
     )
 
 
+def resend_ready_for_delivery() -> bool:
+    return bool(
+        settings.resend_api_key
+        and settings.resend_from_email
+    )
+
+
+def _active_email_provider() -> str:
+    provider = (settings.email_provider or "smtp").strip().lower()
+    return provider or "smtp"
+
+
+def _fallback_email_provider() -> str:
+    provider = (settings.email_provider_fallback or "").strip().lower()
+    if not provider or provider == _active_email_provider():
+        return ""
+    return provider
+
+
+def email_ready_for_delivery() -> bool:
+    provider = _active_email_provider()
+    if provider == "resend":
+        return resend_ready_for_delivery()
+    if provider == "smtp":
+        return smtp_ready_for_delivery()
+    return False
+
+
 def smtp_probe() -> tuple[bool, str]:
     if not smtp_ready_for_delivery():
         return False, "SMTP incompleto: faltan host, puerto, usuario, password o remitente."
@@ -80,9 +110,64 @@ def smtp_probe() -> tuple[bool, str]:
     return True, "Conexion SMTP autenticada correctamente."
 
 
+def resend_probe() -> tuple[bool, str]:
+    if not resend_ready_for_delivery():
+        return False, "Resend incompleto: faltan API key o remitente."
+    return True, "Configuracion de Resend lista para envio."
+
+
+def email_probe() -> tuple[bool, str]:
+    provider = _active_email_provider()
+    if provider == "resend":
+        return resend_probe()
+    if provider == "smtp":
+        return smtp_probe()
+    return False, f"Proveedor de correo no soportado: {provider}"
+
+
 def send_email(*, to_email: str, subject: str, body: str) -> bool:
-    if not smtp_is_configured() or not looks_like_email(to_email):
-        logger.warning("SMTP delivery skipped for recipient=%s due to missing config or invalid email", _mask_email(to_email))
+    if not looks_like_email(to_email):
+        logger.warning("Email delivery skipped for recipient=%s due to invalid email", _mask_email(to_email))
+        return False
+
+    provider = _active_email_provider()
+    logger.info("Email delivery requested via provider=%s to=%s", provider, _mask_email(to_email))
+
+    if provider == "resend":
+        delivered = _send_email_via_resend(to_email=to_email, subject=subject, body=body)
+    elif provider == "smtp":
+        delivered = _send_email_via_smtp(to_email=to_email, subject=subject, body=body)
+    else:
+        logger.warning("Email delivery failed: unsupported provider=%s", provider)
+        delivered = False
+
+    if delivered:
+        return True
+
+    fallback_provider = _fallback_email_provider()
+    if not fallback_provider:
+        return False
+
+    logger.warning(
+        "Primary email provider failed, trying fallback provider=%s for recipient=%s",
+        fallback_provider,
+        _mask_email(to_email),
+    )
+    if fallback_provider == "resend":
+        return _send_email_via_resend(to_email=to_email, subject=subject, body=body)
+    if fallback_provider == "smtp":
+        return _send_email_via_smtp(to_email=to_email, subject=subject, body=body)
+
+    logger.warning("Email fallback failed: unsupported fallback provider=%s", fallback_provider)
+    return False
+
+
+def _send_email_via_smtp(*, to_email: str, subject: str, body: str) -> bool:
+    if not smtp_is_configured():
+        logger.warning(
+            "SMTP delivery skipped for recipient=%s due to missing configuration",
+            _mask_email(to_email),
+        )
         return False
 
     message = EmailMessage()
@@ -122,6 +207,53 @@ def send_email(*, to_email: str, subject: str, body: str) -> bool:
         return False
 
     logger.info("Correo enviado correctamente a %s", _mask_email(to_email))
+    return True
+
+
+def _send_email_via_resend(*, to_email: str, subject: str, body: str) -> bool:
+    if not resend_ready_for_delivery():
+        logger.warning(
+            "Resend delivery skipped for recipient=%s due to missing configuration",
+            _mask_email(to_email),
+        )
+        return False
+
+    payload: dict[str, Any] = {
+        "from": settings.resend_from_email,
+        "to": [to_email.strip()],
+        "subject": subject,
+        "text": body,
+    }
+    if settings.resend_reply_to:
+        payload["reply_to"] = settings.resend_reply_to
+
+    try:
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {settings.resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=15,
+        )
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        logger.warning(
+            "Resend error: status=%s recipient=%s",
+            status_code,
+            _mask_email(to_email),
+        )
+        return False
+    except requests.RequestException as exc:
+        logger.warning("Resend connection error: %s", exc)
+        return False
+    except Exception:
+        logger.exception("Resend unexpected error")
+        return False
+
+    logger.info("Correo enviado correctamente por Resend a %s", _mask_email(to_email))
     return True
 
 

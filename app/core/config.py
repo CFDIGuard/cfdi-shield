@@ -80,6 +80,8 @@ class Settings(BaseSettings):
     master_encryption_key: str = Field(default="", alias="MASTER_ENCRYPTION_KEY")
     max_upload_size_bytes: int = Field(default=5242880, alias="MAX_UPLOAD_SIZE_BYTES")
     max_files_per_upload: int = Field(default=20, alias="MAX_FILES_PER_UPLOAD")
+    email_provider: str = Field(default="smtp", alias="EMAIL_PROVIDER")
+    email_provider_fallback: str = Field(default="", alias="EMAIL_PROVIDER_FALLBACK")
     smtp_host: str = Field(default="", alias="SMTP_HOST")
     smtp_port: int = Field(default=587, alias="SMTP_PORT")
     smtp_user: str = Field(default="", alias="SMTP_USER")
@@ -87,6 +89,9 @@ class Settings(BaseSettings):
     smtp_from_email: str = Field(default="", alias="SMTP_FROM_EMAIL")
     smtp_use_tls: bool = Field(default=True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(default=False, alias="SMTP_USE_SSL")
+    resend_api_key: str = Field(default="", alias="RESEND_API_KEY")
+    resend_from_email: str = Field(default="", alias="RESEND_FROM_EMAIL")
+    resend_reply_to: str = Field(default="", alias="RESEND_REPLY_TO")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

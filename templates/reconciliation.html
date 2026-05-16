@@ -798,7 +798,7 @@
             <article class="metric">
                 <div class="metric-label">Total movimientos</div>
                 <div class="metric-value" id="summary-total">{{ summary.total_movimientos }}</div>
-                <div class="metric-meta" id="summary-total-amount">$0.00 en movimientos visibles</div>
+                <div class="metric-meta"><span id="summary-total-amount">$0.00</span> en movimientos visibles</div>
             </article>
             <article class="metric">
                 <div class="metric-label">Conciliados</div>
@@ -1290,6 +1290,7 @@
                 POSIBLE: groups.POSIBLE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
                 PENDIENTE: groups.PENDIENTE.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0),
             };
+            const totalVisibleAmount = rows.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0);
 
             document.getElementById("summary-conciliado-count").textContent = groups.CONCILIADO.length;
             document.getElementById("summary-conciliado-amount").textContent = `${formatMoney(totals.CONCILIADO)} ya conciliados`;
@@ -1299,7 +1300,7 @@
             document.getElementById("summary-pendiente-copy").textContent = `${groups.PENDIENTE.length} movimientos sin cierre`;
             document.getElementById("summary-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
             document.getElementById("summary-total").textContent = rows.length;
-            document.getElementById("summary-total-amount").textContent = `${formatMoney(totals.CONCILIADO + totals.POSIBLE + totals.PENDIENTE)} en movimientos visibles`;
+            document.getElementById("summary-total-amount").textContent = formatMoney(totalVisibleAmount);
             document.getElementById("summary-high-priority-count").textContent = groups.PENDIENTE
                 .filter((row) => evaluateAttentionPriority(row).level === "HIGH")
                 .length;

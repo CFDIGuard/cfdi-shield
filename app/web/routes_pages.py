@@ -19,7 +19,7 @@ from app.schemas.invoice import InvoiceFilters
 from app.services.bank_reconciliation_service import get_reconciliation_summary
 from app.services.excel_exporter import generate_excel_report
 from app.services.invoice_processor import InvoiceProcessingError, procesar_factura
-from app.services.notification_service import smtp_ready_for_delivery
+from app.services.notification_service import email_ready_for_delivery
 from app.services.security_utils import mask_username, mask_uuid
 from app.templates import templates
 from app.services.xml_parser import parse_cfdi_xml
@@ -163,10 +163,10 @@ def _sat_mode_view(current_user: User) -> tuple[bool, str]:
 def _two_factor_view(current_user: User) -> tuple[bool, str, bool]:
     if not settings.enable_two_factor:
         return False, "2FA desactivado en esta demo.", False
-    if not smtp_ready_for_delivery():
+    if not email_ready_for_delivery():
         if current_user.two_factor_enabled:
-            return True, "2FA requiere configuracion SMTP para volver a activarse por correo.", True
-        return False, "2FA requiere configuracion SMTP.", False
+            return True, "2FA requiere configuracion de correo para volver a activarse por correo.", True
+        return False, "2FA requiere configuracion de correo.", False
     if current_user.two_factor_enabled:
         return True, "Proteccion por correo activa para este usuario.", True
     return False, "Disponible para activarse con envio por correo.", True
