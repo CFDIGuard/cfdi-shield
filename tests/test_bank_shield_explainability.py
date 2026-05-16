@@ -112,6 +112,14 @@ def test_invoice_unavailable_for_ui_returns_false_when_cfdi_is_still_available()
     ) is False
 
 
+def test_invoice_unavailable_for_ui_prefers_existing_uuid_over_unavailable_reason():
+    assert invoice_unavailable_for_ui(
+        "Factura relacionada eliminada",
+        matched_invoice_id=102,
+        matched_invoice_uuid="BBBBBBBB-2222-4222-8222-BBBBBBBBBBBB",
+    ) is False
+
+
 def test_invoice_unavailable_for_ui_returns_true_when_reason_marks_deleted_invoice():
     assert invoice_unavailable_for_ui(
         "Factura relacionada eliminada",
