@@ -6,6 +6,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
+from app.modules.bank_shield.services.reconciliation_service import (
+    _classify_match,
+    _currency_matches,
+    _date_match_score,
+    _supplier_match_score,
+)
 from app.repositories.bank_transaction_repository import BankTransactionRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
@@ -208,6 +214,164 @@ def test_missing_match_is_pendiente():
 
     assert row["match_status"] == "PENDIENTE"
     assert row["matched_invoice_id"] is None
+
+
+def test_date_match_score_returns_full_points_for_exact_date():
+    score, reason = _date_match_score("2026-04-25", "2026-04-25T10:00:00")
+
+    assert score == 20
+    assert reason == "Fecha dentro de 0 dias"
+
+
+def test_date_match_score_returns_full_points_for_nearby_date_within_window():
+    score, reason = _date_match_score("2026-04-25", "2026-04-28T10:00:00")
+
+    assert score == 20
+    assert reason == "Fecha dentro de 3 dias"
+
+
+def test_date_match_score_returns_no_points_for_distant_date():
+    score, reason = _date_match_score("2026-04-25", "2030-01-01T10:00:00")
+
+    assert score == 0
+    assert reason is None
+
+
+def test_supplier_match_score_detects_supplier_name_in_transaction_text():
+    invoice = _invoice_stub(
+        invoice_id=10,
+        uuid="11111111-1111-4111-8111-111111111111",
+        total_mxn=500.0,
+        razon_social="Proveedor Industrial SA de CV",
+        rfc_emisor="PIS010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="Transferencia Proveedor Industrial SA de CV",
+        referencia=None,
+        monto=500.0,
+        raw_hash="supplier-name",
+    )
+
+    score, reason = _supplier_match_score(transaction, invoice)
+
+    assert score == 25
+    assert reason == "Proveedor detectado en descripcion"
+
+
+def test_supplier_match_score_detects_rfc_in_transaction_text():
+    invoice = _invoice_stub(
+        invoice_id=11,
+        uuid="22222222-2222-4222-8222-222222222222",
+        total_mxn=600.0,
+        razon_social="Nombre no presente",
+        rfc_emisor="RFC010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="Abono RFC010101AAA por servicio",
+        referencia=None,
+        monto=600.0,
+        raw_hash="supplier-rfc",
+    )
+
+    score, reason = _supplier_match_score(transaction, invoice)
+
+    assert score == 25
+    assert reason == "RFC detectado en descripcion"
+
+
+def test_supplier_match_score_returns_no_match_for_unrelated_text():
+    invoice = _invoice_stub(
+        invoice_id=12,
+        uuid="33333333-3333-4333-8333-333333333333",
+        total_mxn=700.0,
+        razon_social="Proveedor Relacionado",
+        rfc_emisor="REL010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="Movimiento sin datos relacionados",
+        referencia="Operacion interna",
+        monto=700.0,
+        raw_hash="supplier-none",
+    )
+
+    score, reason = _supplier_match_score(transaction, invoice)
+
+    assert score == 0
+    assert reason is None
+
+
+def test_supplier_match_score_detects_partial_match_by_meaningful_tokens():
+    invoice = _invoice_stub(
+        invoice_id=15,
+        uuid="66666666-6666-4666-8666-666666666666",
+        total_mxn=710.0,
+        razon_social="Servicios Industriales Delta",
+        rfc_emisor="SID010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="Pago servicios delta correspondientes a mantenimiento",
+        referencia="SPEI BANCA MOVIL",
+        monto=710.0,
+        raw_hash="supplier-partial-tokens",
+    )
+
+    score, reason = _supplier_match_score(transaction, invoice)
+
+    assert score == 20
+    assert reason == "Coincidencia por proveedor/nombre"
+
+
+def test_currency_matches_returns_true_for_same_currency():
+    invoice = _invoice_stub(
+        invoice_id=13,
+        uuid="44444444-4444-4444-8444-444444444444",
+        total_mxn=800.0,
+        razon_social="Proveedor MXN",
+        rfc_emisor="MXN010101AAA",
+    )
+    transaction = _transaction(
+        descripcion="Pago en pesos",
+        referencia=None,
+        monto=800.0,
+        raw_hash="currency-same",
+    )
+
+    assert _currency_matches(transaction, invoice) is True
+
+
+def test_currency_matches_returns_false_for_different_currency():
+    invoice = _invoice_stub(
+        invoice_id=14,
+        uuid="55555555-5555-4555-8555-555555555555",
+        total_mxn=900.0,
+        razon_social="Proveedor USD",
+        rfc_emisor="USD010101AAA",
+    )
+    invoice.moneda_original = "USD"
+    transaction = _transaction(
+        descripcion="Pago en pesos",
+        referencia=None,
+        monto=900.0,
+        raw_hash="currency-different",
+    )
+
+    assert _currency_matches(transaction, invoice) is False
+
+
+def test_classify_match_returns_conciliado_for_uuid_and_threshold():
+    assert _classify_match(80, True) == "CONCILIADO"
+
+
+def test_classify_match_returns_posible_for_uuid_just_below_conciliado_threshold():
+    assert _classify_match(79.99, True) == "POSIBLE"
+
+
+def test_classify_match_returns_posible_for_partial_threshold():
+    assert _classify_match(50, False) == "POSIBLE"
+
+
+def test_classify_match_returns_pendiente_below_threshold():
+    assert _classify_match(49.99, False) == "PENDIENTE"
 
 
 def test_process_bank_statement_upload_does_not_cross_user_scope(tmp_path):
