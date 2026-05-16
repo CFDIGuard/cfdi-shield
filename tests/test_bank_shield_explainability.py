@@ -3,6 +3,7 @@ from app.modules.bank_shield.services.reconciliation_service import (
     STRONG_EVIDENCE_MIN_CHIPS,
     WEAK_EVIDENCE_MAX_CHIPS,
     _score_breakdown_for_ui,
+    invoice_unavailable_for_ui,
 )
 
 
@@ -101,3 +102,55 @@ def test_score_breakdown_limits_chip_count_to_backend_maximum():
 
     assert len(breakdown["chips"]) == MAX_BREAKDOWN_CHIPS
     assert all(set(chip.keys()) == {"key", "label", "tone"} for chip in breakdown["chips"])
+
+
+def test_invoice_unavailable_for_ui_returns_false_when_cfdi_is_still_available():
+    assert invoice_unavailable_for_ui(
+        "UUID detectado en referencia o descripcion",
+        matched_invoice_id=101,
+        matched_invoice_uuid="AAAAAAAA-1111-4111-8111-AAAAAAAAAAAA",
+    ) is False
+
+
+def test_invoice_unavailable_for_ui_returns_true_when_reason_marks_deleted_invoice():
+    assert invoice_unavailable_for_ui(
+        "Factura relacionada eliminada",
+        matched_invoice_id=None,
+        matched_invoice_uuid=None,
+    ) is True
+
+
+def test_invoice_unavailable_for_ui_returns_true_when_invoice_id_exists_but_uuid_is_missing():
+    assert invoice_unavailable_for_ui(
+        "UUID detectado en referencia o descripcion",
+        matched_invoice_id=202,
+        matched_invoice_uuid=None,
+    ) is True
+
+
+def test_invoice_unavailable_for_ui_returns_false_without_reason_or_invoice_link():
+    assert invoice_unavailable_for_ui(
+        None,
+        matched_invoice_id=None,
+        matched_invoice_uuid=None,
+    ) is False
+
+
+def test_invoice_unavailable_breakdown_preserves_ui_expected_fields_and_fallback_message():
+    invoice_unavailable = invoice_unavailable_for_ui(
+        "UUID detectado en referencia o descripcion",
+        matched_invoice_id=303,
+        matched_invoice_uuid=None,
+    )
+    breakdown = _score_breakdown_for_ui(
+        match_reason="UUID detectado en referencia o descripcion",
+        invoice_unavailable=invoice_unavailable,
+    )
+
+    assert invoice_unavailable is True
+    assert set(breakdown.keys()) == {"chips", "summary", "confidence_hint"}
+    assert breakdown["chips"] == [
+        {"key": "invoice_unavailable", "label": "CFDI no disponible", "tone": "warning"}
+    ]
+    assert breakdown["summary"] == "La factura sugerida ya no esta disponible para conciliacion."
+    assert breakdown["confidence_hint"] == "evidence_weak"
