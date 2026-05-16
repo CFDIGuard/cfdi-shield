@@ -699,6 +699,12 @@
             border-color: rgba(180, 83, 9, 0.18);
         }
 
+        .factor-chip.neutral {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-color: rgba(37, 99, 235, 0.16);
+        }
+
         tr.row-emphasis-possible td {
             background: rgba(255, 247, 237, 0.52);
         }
@@ -1000,7 +1006,26 @@
             return `<strong>${escapeHtml(transaction.matched_invoice_provider || "-")}</strong><br><span class="muted">${escapeHtml(transaction.matched_invoice_uuid)}</span>`;
         }
 
+        function breakdownChips(transaction) {
+            const chips = Array.isArray(transaction.score_breakdown?.chips)
+                ? transaction.score_breakdown.chips
+                : [];
+            return chips
+                .filter((chip) => chip && chip.label)
+                .slice(0, 3);
+        }
+
         function factorBadges(transaction) {
+            const breakdown = breakdownChips(transaction);
+            if (breakdown.length) {
+                return breakdown.map((chip) => {
+                    const tone = ["positive", "warning", "neutral"].includes(chip.tone)
+                        ? chip.tone
+                        : "";
+                    const toneClass = tone ? ` ${tone}` : "";
+                    return `<span class="factor-chip${toneClass}">${escapeHtml(chip.label)}</span>`;
+                }).join("");
+            }
             if (transaction.invoice_unavailable === true) {
                 return '<span class="factor-chip warning">CFDI no disponible</span>';
             }
@@ -1055,25 +1080,27 @@
 
         function scoreCell(transaction) {
             if (transaction.invoice_unavailable === true) {
+                const breakdownSummary = transaction.score_breakdown?.summary || "";
                 return `
                     <div class="score-stack">
                         <div class="score-top">
                             <span class="score-level low">CFDI no disponible</span>
                             <span class="score-percent">N/A</span>
                         </div>
-                        <div class="match-factors">${factorBadges(transaction)}</div>
+                        <div class="match-factors" title="${escapeHtml(breakdownSummary)}">${factorBadges(transaction)}</div>
                     </div>
                 `;
             }
             const numericScore = Number(transaction.match_score || 0);
             const level = scoreLevel(numericScore);
+            const breakdownSummary = transaction.score_breakdown?.summary || "";
             return `
                 <div class="score-stack">
                     <div class="score-top">
                         <span class="score-level ${level.className}">${level.label}</span>
                         <span class="score-percent">${numericScore.toFixed(0)}%</span>
                     </div>
-                    <div class="match-factors">${factorBadges(transaction)}</div>
+                    <div class="match-factors" title="${escapeHtml(breakdownSummary)}">${factorBadges(transaction)}</div>
                 </div>
             `;
         }
