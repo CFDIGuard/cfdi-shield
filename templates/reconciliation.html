@@ -796,24 +796,39 @@
 
         <section class="grid" aria-label="Resumen de conciliacion">
             <article class="metric">
-                <div class="metric-label">Conciliado</div>
-                <div class="metric-value" id="summary-conciliado-amount">$0.00</div>
-                <div class="metric-meta"><span id="summary-conciliado-count">{{ summary.conciliados }}</span> movimientos listos</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Posible</div>
-                <div class="metric-value" id="summary-posible-amount">$0.00</div>
-                <div class="metric-meta"><span id="summary-posible-count">{{ summary.posibles }}</span> movimientos por confirmar</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Pendiente</div>
-                <div class="metric-value" id="summary-pendiente-amount">$0.00</div>
-                <div class="metric-meta"><span id="summary-pendiente-count">{{ summary.pendientes }}</span> movimientos sin match</div>
-            </article>
-            <article class="metric">
-                <div class="metric-label">Total visible</div>
+                <div class="metric-label">Total movimientos</div>
                 <div class="metric-value" id="summary-total">{{ summary.total_movimientos }}</div>
                 <div class="metric-meta"><span id="summary-total-amount">$0.00</span> en movimientos visibles</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Conciliados</div>
+                <div class="metric-value" id="summary-conciliado-count">{{ summary.conciliados }}</div>
+                <div class="metric-meta" id="summary-conciliado-amount">$0.00 ya conciliados</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Posibles</div>
+                <div class="metric-value" id="summary-posible-count">{{ summary.posibles }}</div>
+                <div class="metric-meta" id="summary-posible-amount">$0.00 por confirmar</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Pendientes</div>
+                <div class="metric-value" id="summary-pendiente-count">{{ summary.pendientes }}</div>
+                <div class="metric-meta" id="summary-pendiente-copy">Movimientos sin cierre</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Monto pendiente</div>
+                <div class="metric-value" id="summary-pendiente-amount">$0.00</div>
+                <div class="metric-meta">Valor operativo por asignar o confirmar</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">Pendientes alta prioridad</div>
+                <div class="metric-value" id="summary-high-priority-count">0</div>
+                <div class="metric-meta">Casos que conviene atender primero</div>
+            </article>
+            <article class="metric">
+                <div class="metric-label">CFDI no disponible</div>
+                <div class="metric-value" id="summary-invoice-unavailable-count">0</div>
+                <div class="metric-meta">Sugerencias que requieren reasignacion manual</div>
             </article>
         </section>
 
@@ -1277,14 +1292,21 @@
             };
             const totalVisibleAmount = rows.reduce((accumulator, row) => accumulator + Number(row.monto || 0), 0);
 
-            document.getElementById("summary-conciliado-amount").textContent = formatMoney(totals.CONCILIADO);
             document.getElementById("summary-conciliado-count").textContent = groups.CONCILIADO.length;
-            document.getElementById("summary-posible-amount").textContent = formatMoney(totals.POSIBLE);
+            document.getElementById("summary-conciliado-amount").textContent = `${formatMoney(totals.CONCILIADO)} ya conciliados`;
             document.getElementById("summary-posible-count").textContent = groups.POSIBLE.length;
-            document.getElementById("summary-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
+            document.getElementById("summary-posible-amount").textContent = `${formatMoney(totals.POSIBLE)} por confirmar`;
             document.getElementById("summary-pendiente-count").textContent = groups.PENDIENTE.length;
+            document.getElementById("summary-pendiente-copy").textContent = `${groups.PENDIENTE.length} movimientos sin cierre`;
+            document.getElementById("summary-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
             document.getElementById("summary-total").textContent = rows.length;
             document.getElementById("summary-total-amount").textContent = formatMoney(totalVisibleAmount);
+            document.getElementById("summary-high-priority-count").textContent = groups.PENDIENTE
+                .filter((row) => evaluateAttentionPriority(row).level === "HIGH")
+                .length;
+            document.getElementById("summary-invoice-unavailable-count").textContent = rows
+                .filter((row) => row.invoice_unavailable === true)
+                .length;
 
             const weakMatches = groups.POSIBLE.filter((row) => Number(row.match_score || 0) < 70);
             document.getElementById("alert-pendiente-amount").textContent = formatMoney(totals.PENDIENTE);
