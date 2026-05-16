@@ -8,15 +8,19 @@ imports remain supported through temporary passthrough adapters.
 
 from datetime import datetime
 import re
-import unicodedata
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.modules.bank_shield.repositories.invoice_lookup_repository import InvoiceLookupRepository
+from app.modules.bank_shield.services.normalization import (
+    _meaningful_tokens,
+    _normalized_text,
+    _normalize_search_text,
+)
 from app.modules.bank_shield.services.statement_parser import ParsedBankTransaction, parse_bank_statement
 from app.models.invoice import Invoice
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
-from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.bank_reconciliation import BankReconciliationFilters
 
 
@@ -24,41 +28,6 @@ UUID_PATTERN = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[1-5][0-9A-F]{3}-[89AB][0-9A
 MAX_BREAKDOWN_CHIPS = 6
 STRONG_EVIDENCE_MIN_CHIPS = 3
 WEAK_EVIDENCE_MAX_CHIPS = 1
-BANKING_NOISE_WORDS = {
-    "PAGO",
-    "TRANSFERENCIA",
-    "TRANSF",
-    "SPEI",
-    "ABONO",
-    "CARGO",
-    "REF",
-    "REFERENCIA",
-    "CONCEPTO",
-    "PAG",
-    "TRASPASO",
-    "DEPOSITO",
-    "DEPOSITO",
-    "COBRO",
-}
-
-
-def _normalized_text(value: str | None) -> str:
-    return str(value or "").strip().upper()
-
-
-def _normalize_search_text(value: str | None) -> str:
-    text = str(value or "").strip().upper()
-    text = unicodedata.normalize("NFKD", text)
-    text = "".join(character for character in text if not unicodedata.combining(character))
-    return re.sub(r"[^A-Z0-9]+", " ", text).strip()
-
-
-def _meaningful_tokens(value: str | None) -> list[str]:
-    return [
-        token
-        for token in _normalize_search_text(value).split()
-        if len(token) >= 3 and token not in BANKING_NOISE_WORDS
-    ]
 
 
 def _invoice_total_mxn(invoice: Invoice) -> float | None:
@@ -302,9 +271,9 @@ def process_bank_statement_upload(
     if not parsed_transactions:
         raise ValueError("No se encontraron movimientos validos en el estado bancario.")
 
-    invoice_repository = InvoiceRepository(db, user_id=user_id)
     bank_repository = BankTransactionRepository(db, user_id=user_id)
-    invoices = invoice_repository.list_all()
+    invoice_lookup_repository = InvoiceLookupRepository(db, user_id=user_id)
+    invoices = invoice_lookup_repository.list_all_for_matching()
     reconciled_rows = reconcile_transactions(parsed_transactions, invoices)
 
     for payload in reconciled_rows:
@@ -320,7 +289,7 @@ def get_reconciliation_rows(
     filters: BankReconciliationFilters | None = None,
 ) -> list[dict[str, object]]:
     bank_repository = BankTransactionRepository(db, user_id=user_id)
-    invoice_repository = InvoiceRepository(db, user_id=user_id)
+    invoice_lookup_repository = InvoiceLookupRepository(db, user_id=user_id)
     movements = bank_repository.list_recent(limit=limit, filters=filters)
     matched_invoice_ids = sorted(
         {
@@ -331,7 +300,7 @@ def get_reconciliation_rows(
     )
     invoices_by_id = {
         invoice.id: invoice
-        for invoice in invoice_repository.list_by_ids(matched_invoice_ids)
+        for invoice in invoice_lookup_repository.list_by_ids_for_reconciliation(matched_invoice_ids)
     }
 
     rows: list[dict[str, object]] = []
