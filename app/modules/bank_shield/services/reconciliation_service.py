@@ -21,6 +21,9 @@ from app.schemas.bank_reconciliation import BankReconciliationFilters
 
 
 UUID_PATTERN = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[1-5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}", re.IGNORECASE)
+MAX_BREAKDOWN_CHIPS = 6
+STRONG_EVIDENCE_MIN_CHIPS = 3
+WEAK_EVIDENCE_MAX_CHIPS = 1
 BANKING_NOISE_WORDS = {
     "PAGO",
     "TRANSFERENCIA",
@@ -79,6 +82,63 @@ def invoice_unavailable_for_ui(
         or "FACTURA NO DISPONIBLE" in normalized_reason
     )
     return (indicates_unavailable or matched_invoice_id is not None) and not matched_invoice_uuid
+
+
+def _score_breakdown_for_ui(
+    *,
+    match_reason: str | None,
+    invoice_unavailable: bool,
+) -> dict[str, object]:
+    if invoice_unavailable:
+        return {
+            "chips": [
+                {"key": "invoice_unavailable", "label": "CFDI no disponible", "tone": "warning"},
+            ],
+            "summary": "La factura sugerida ya no esta disponible para conciliacion.",
+            "confidence_hint": "evidence_weak",
+        }
+
+    normalized_reason = _normalized_text(match_reason)
+    if not normalized_reason or normalized_reason == "SIN COINCIDENCIA SUFICIENTE":
+        return {
+            "chips": [
+                {"key": "insufficient_match", "label": "Sin coincidencia", "tone": "warning"},
+            ],
+            "summary": "No hay evidencia suficiente para sugerir un CFDI.",
+            "confidence_hint": "evidence_weak",
+        }
+
+    chips: list[dict[str, str]] = []
+
+    def add_chip(key: str, label: str, tone: str = "positive") -> None:
+        if any(existing["key"] == key for existing in chips):
+            return
+        chips.append({"key": key, "label": label, "tone": tone})
+
+    if "UUID DETECTADO" in normalized_reason:
+        add_chip("uuid", "UUID")
+    if "MONTO EXACTO" in normalized_reason or "MONTO DENTRO DE TOLERANCIA" in normalized_reason:
+        add_chip("amount", "Monto")
+    if "FECHA DENTRO DE" in normalized_reason:
+        add_chip("date", "Fecha", "neutral")
+    if "RFC DETECTADO" in normalized_reason:
+        add_chip("rfc", "RFC")
+    if "PROVEEDOR DETECTADO" in normalized_reason or "COINCIDENCIA POR PROVEEDOR/NOMBRE" in normalized_reason:
+        add_chip("supplier", "Proveedor")
+    if "MONEDA COINCIDE" in normalized_reason:
+        add_chip("currency", "Moneda", "neutral")
+
+    confidence_hint = "evidence_partial"
+    if any(chip["key"] == "uuid" for chip in chips) or len(chips) >= STRONG_EVIDENCE_MIN_CHIPS:
+        confidence_hint = "evidence_strong"
+    elif len(chips) <= WEAK_EVIDENCE_MAX_CHIPS:
+        confidence_hint = "evidence_weak"
+
+    return {
+        "chips": chips[:MAX_BREAKDOWN_CHIPS],
+        "summary": match_reason or "Revision sugerida",
+        "confidence_hint": confidence_hint,
+    }
 
 
 def _extract_date(value: str | None) -> datetime | None:
@@ -284,6 +344,10 @@ def get_reconciliation_rows(
             matched_invoice_id=movement.matched_invoice_id,
             matched_invoice_uuid=matched_invoice_uuid,
         )
+        score_breakdown = _score_breakdown_for_ui(
+            match_reason=movement.match_reason,
+            invoice_unavailable=invoice_unavailable,
+        )
         rows.append(
             {
                 "id": movement.id,
@@ -304,6 +368,7 @@ def get_reconciliation_rows(
                 "matched_invoice_provider": matched_invoice_provider,
                 "matched_invoice_total_mxn": _invoice_total_mxn(matched_invoice) if matched_invoice is not None else None,
                 "invoice_unavailable": invoice_unavailable,
+                "score_breakdown": score_breakdown,
             }
         )
     return rows

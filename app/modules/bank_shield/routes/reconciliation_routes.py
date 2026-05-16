@@ -18,6 +18,7 @@ from app.models.user import User
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
 from app.modules.bank_shield.services.reconciliation_service import (
     invoice_unavailable_for_ui,
+    _score_breakdown_for_ui,
     process_bank_statement_upload,
 )
 from app.repositories.invoice_repository import InvoiceRepository
@@ -84,6 +85,10 @@ def _transaction_payload(transaction: BankTransaction, invoice_repository: Invoi
         matched_invoice_id=transaction.matched_invoice_id,
         matched_invoice_uuid=matched_invoice_uuid,
     )
+    score_breakdown = _score_breakdown_for_ui(
+        match_reason=transaction.match_reason,
+        invoice_unavailable=invoice_unavailable,
+    )
     return {
         "id": transaction.id,
         "descripcion": transaction.descripcion,
@@ -96,6 +101,7 @@ def _transaction_payload(transaction: BankTransaction, invoice_repository: Invoi
         "matched_invoice_uuid": matched_invoice_uuid,
         "matched_invoice_provider": matched_invoice_provider,
         "invoice_unavailable": invoice_unavailable,
+        "score_breakdown": score_breakdown,
     }
 
 
