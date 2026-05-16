@@ -249,8 +249,8 @@ def _send_email_via_resend(*, to_email: str, subject: str, body: str) -> bool:
     except requests.RequestException as exc:
         logger.warning("Resend connection error: %s", exc)
         return False
-    except Exception as exc:
-        logger.warning("Resend unexpected error: %s", exc)
+    except Exception:
+        logger.exception("Resend unexpected error")
         return False
 
     logger.info("Correo enviado correctamente por Resend a %s", _mask_email(to_email))
