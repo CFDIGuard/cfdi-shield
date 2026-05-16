@@ -972,6 +972,7 @@
         const INVOICE_SEARCH_MIN_CHARS = 2;
         const INVOICE_SEARCH_DEBOUNCE_MS = 300;
         const INVOICE_SEARCH_LIMIT = 20;
+        const MAX_VISIBLE_CHIPS = 3;
         const ATTENTION_THRESHOLDS = {
             highPendingAmount: 10000,
             mediumPendingAmount: 5000,
@@ -1012,7 +1013,7 @@
                 : [];
             return chips
                 .filter((chip) => chip && chip.label)
-                .slice(0, 3);
+                .slice(0, MAX_VISIBLE_CHIPS);
         }
 
         function factorBadges(transaction) {

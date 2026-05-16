@@ -21,6 +21,9 @@ from app.schemas.bank_reconciliation import BankReconciliationFilters
 
 
 UUID_PATTERN = re.compile(r"[0-9A-F]{8}-[0-9A-F]{4}-[1-5][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}", re.IGNORECASE)
+MAX_BREAKDOWN_CHIPS = 6
+STRONG_EVIDENCE_MIN_CHIPS = 3
+WEAK_EVIDENCE_MAX_CHIPS = 1
 BANKING_NOISE_WORDS = {
     "PAGO",
     "TRANSFERENCIA",
@@ -126,13 +129,13 @@ def _score_breakdown_for_ui(
         add_chip("currency", "Moneda", "neutral")
 
     confidence_hint = "evidence_partial"
-    if any(chip["key"] == "uuid" for chip in chips) or len(chips) >= 3:
+    if any(chip["key"] == "uuid" for chip in chips) or len(chips) >= STRONG_EVIDENCE_MIN_CHIPS:
         confidence_hint = "evidence_strong"
-    elif len(chips) <= 1:
+    elif len(chips) <= WEAK_EVIDENCE_MAX_CHIPS:
         confidence_hint = "evidence_weak"
 
     return {
-        "chips": chips[:6],
+        "chips": chips[:MAX_BREAKDOWN_CHIPS],
         "summary": match_reason or "Revision sugerida",
         "confidence_hint": confidence_hint,
     }
