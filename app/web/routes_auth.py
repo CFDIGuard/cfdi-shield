@@ -24,10 +24,10 @@ from app.services.auth_service import (
     verify_password,
 )
 from app.services.notification_service import (
+    email_ready_for_delivery,
     send_password_reset_email,
     send_two_factor_email,
     smtp_is_configured,
-    smtp_ready_for_delivery,
 )
 from app.templates import templates
 from app.services.session_service import create_user_session, revoke_session
@@ -72,7 +72,7 @@ def _two_factor_available() -> bool:
 
 
 def _two_factor_can_be_enabled() -> bool:
-    return _two_factor_available() and smtp_ready_for_delivery()
+    return _two_factor_available() and email_ready_for_delivery()
 
 
 def _set_session_cookie(response: RedirectResponse, raw_token: str) -> None:
@@ -560,7 +560,7 @@ def toggle_two_factor(
 
     if not user.two_factor_enabled and not _two_factor_can_be_enabled():
         return RedirectResponse(
-            url=web_url("/dashboard-web", error="2FA requiere configuracion SMTP."),
+            url=web_url("/dashboard-web", error="2FA requiere configuracion de correo."),
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
