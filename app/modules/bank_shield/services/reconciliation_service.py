@@ -6,7 +6,6 @@ Current implementation is migrated into the Bank Shield module while legacy
 imports remain supported through temporary passthrough adapters.
 """
 
-from datetime import datetime
 import re
 
 from sqlalchemy.orm import Session
@@ -18,6 +17,7 @@ from app.modules.bank_shield.services.normalization import (
     _normalized_text,
     _normalize_search_text,
 )
+from app.modules.bank_shield.services.scoring import _currency_matches, _date_match_score
 from app.modules.bank_shield.services.statement_parser import ParsedBankTransaction, parse_bank_statement
 from app.models.invoice import Invoice
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
@@ -110,26 +110,6 @@ def _score_breakdown_for_ui(
     }
 
 
-def _extract_date(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        return datetime.fromisoformat(value[:10])
-    except ValueError:
-        return None
-
-
-def _date_match_score(transaction_date: str | None, invoice_date: str | None) -> tuple[int, str | None]:
-    tx_date = _extract_date(transaction_date)
-    inv_date = _extract_date(invoice_date)
-    if tx_date is None or inv_date is None:
-        return 0, None
-    days_diff = abs((tx_date.date() - inv_date.date()).days)
-    if days_diff <= settings.bank_reconciliation_date_window_days:
-        return 20, f"Fecha dentro de {days_diff} dias"
-    return 0, None
-
-
 def _supplier_match_score(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[int, str | None]:
     haystack = _normalize_search_text(f"{transaction.descripcion} {transaction.referencia or ''}")
 
@@ -160,12 +140,6 @@ def _uuid_detected(transaction: ParsedBankTransaction, invoice: Invoice) -> bool
         return True
     matches = UUID_PATTERN.findall(haystack)
     return any(match.upper() == str(invoice.uuid or "").upper() for match in matches)
-
-
-def _currency_matches(transaction: ParsedBankTransaction, invoice: Invoice) -> bool:
-    transaction_currency = _normalized_text(transaction.moneda or "MXN") or "MXN"
-    invoice_currency = _normalized_text(invoice.moneda_original or invoice.moneda or "MXN") or "MXN"
-    return transaction_currency == invoice_currency
 
 
 def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[float, list[str], bool]:
