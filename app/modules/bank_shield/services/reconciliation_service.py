@@ -18,6 +18,7 @@ from app.modules.bank_shield.services.normalization import (
     _normalize_search_text,
 )
 from app.modules.bank_shield.services.scoring import (
+    _classify_match,
     _currency_matches,
     _date_match_score,
     _supplier_match_score,
@@ -159,14 +160,6 @@ def _score_transaction(transaction: ParsedBankTransaction, invoice: Invoice) -> 
         reasons.append("Moneda coincide")
 
     return min(score, 100.0), reasons, uuid_detected
-
-
-def _classify_match(score: float, uuid_detected: bool) -> str:
-    if uuid_detected and score >= 80:
-        return "CONCILIADO"
-    if score >= 50:
-        return "POSIBLE"
-    return "PENDIENTE"
 
 
 def reconcile_transactions(
