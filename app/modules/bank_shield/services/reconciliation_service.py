@@ -17,7 +17,11 @@ from app.modules.bank_shield.services.normalization import (
     _normalized_text,
     _normalize_search_text,
 )
-from app.modules.bank_shield.services.scoring import _currency_matches, _date_match_score
+from app.modules.bank_shield.services.scoring import (
+    _currency_matches,
+    _date_match_score,
+    _supplier_match_score,
+)
 from app.modules.bank_shield.services.statement_parser import ParsedBankTransaction, parse_bank_statement
 from app.models.invoice import Invoice
 from app.modules.bank_shield.repositories.bank_transaction_repository import BankTransactionRepository
@@ -108,30 +112,6 @@ def _score_breakdown_for_ui(
         "summary": match_reason or "Revision sugerida",
         "confidence_hint": confidence_hint,
     }
-
-
-def _supplier_match_score(transaction: ParsedBankTransaction, invoice: Invoice) -> tuple[int, str | None]:
-    haystack = _normalize_search_text(f"{transaction.descripcion} {transaction.referencia or ''}")
-
-    for rfc_value in (invoice.rfc_emisor, getattr(invoice, "rfc_receptor", None)):
-        normalized_rfc = _normalize_search_text(rfc_value)
-        if normalized_rfc and normalized_rfc in haystack:
-            return 25, "RFC detectado en descripcion"
-
-    supplier_name = _normalize_search_text(invoice.razon_social)
-    if supplier_name and len(supplier_name) >= 6 and supplier_name in haystack:
-        return 25, "Proveedor detectado en descripcion"
-
-    haystack_tokens = set(_meaningful_tokens(f"{transaction.descripcion} {transaction.referencia or ''}"))
-    supplier_tokens = _meaningful_tokens(invoice.razon_social)
-    if len(supplier_tokens) >= 2 and haystack_tokens:
-        matched_tokens = [token for token in supplier_tokens if token in haystack_tokens]
-        if len(matched_tokens) >= 2:
-            coverage = len(matched_tokens) / len(supplier_tokens)
-            if coverage >= 0.6:
-                return 20, "Coincidencia por proveedor/nombre"
-
-    return 0, None
 
 
 def _uuid_detected(transaction: ParsedBankTransaction, invoice: Invoice) -> bool:
