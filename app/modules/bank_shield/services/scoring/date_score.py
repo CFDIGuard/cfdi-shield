@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.core.config import settings
+from app.modules.bank_shield.services.scoring.rules import DATE_MATCH_SCORE_POINTS
 
 
 def _extract_date(value: str | None) -> datetime | None:
@@ -21,5 +22,5 @@ def _date_match_score(transaction_date: str | None, invoice_date: str | None) ->
         return 0, None
     days_diff = abs((tx_date.date() - inv_date.date()).days)
     if days_diff <= settings.bank_reconciliation_date_window_days:
-        return 20, f"Fecha dentro de {days_diff} dias"
+        return DATE_MATCH_SCORE_POINTS, f"Fecha dentro de {days_diff} dias"
     return 0, None
