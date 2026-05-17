@@ -8,10 +8,9 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.modules.bank_shield.services.reconciliation_service import (
     _classify_match,
-    _currency_matches,
-    _date_match_score,
     _supplier_match_score,
 )
+from app.modules.bank_shield.services.scoring import _currency_matches, _date_match_score
 from app.repositories.bank_transaction_repository import BankTransactionRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.user_repository import UserRepository
